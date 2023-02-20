@@ -1,34 +1,33 @@
 #pragma once
 
 #include <windows.h> 
+#include <d3d12.h>
+#include <dxgi1_4.h>
+#include <cstdint>
+
 #include "imgui.h"
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx12.h"
-#include <d3d12.h>
-#include <dxgi1_4.h>
 
 namespace blueGUI
 {
 	// Windows window
-	extern bool quit;
-	constexpr int windowWidth = 800;
-	constexpr int windowHeight = 500;
+	extern bool			quit;
+	constexpr uint32_t	windowWidth = 800;
+	constexpr uint32_t	windowHeight = 500;
 	// winapi window variables
-	extern HWND window;
+	extern HWND			window;
 	extern WNDCLASSEXW	windowClass;
 	// points for window movement
-	extern POINTS position;
-	extern ImVec4 clear_color;
+	extern POINTS		position;
+	extern ImVec4		clear_color;
 
-	// dx12
-	//extern ImGuiIO& io;
+	// DX12
 	extern struct FrameContext;
-
 	// Data
-	extern int const                    NUM_FRAMES_IN_FLIGHT;
-	extern UINT                         g_frameIndex;
-
-	extern int const                    NUM_BACK_BUFFERS ;
+	extern int32_t const                NUM_FRAMES_IN_FLIGHT;
+	extern uint32_t                     g_frameIndex;
+	extern int32_t const                NUM_BACK_BUFFERS ;
 	extern ID3D12Device*				g_pd3dDevice;
 	extern ID3D12DescriptorHeap*		g_pd3dRtvDescHeap;
 	extern ID3D12DescriptorHeap*		g_pd3dSrvDescHeap;
@@ -36,7 +35,7 @@ namespace blueGUI
 	extern ID3D12GraphicsCommandList*	g_pd3dCommandList;
 	extern ID3D12Fence*					g_fence;
 	extern HANDLE                       g_fenceEvent;
-	extern UINT64                       g_fenceLastSignaledValue;
+	extern uint64_t                     g_fenceLastSignaledValue;
 	extern IDXGISwapChain3*				g_pSwapChain;
 	extern HANDLE                       g_hSwapChainWaitableObject;
 
