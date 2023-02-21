@@ -9,21 +9,6 @@ LRESULT WINAPI WindowProcess(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
 	switch (msg)
 	{
-	//case WM_SIZE:
-	//{
-	//	if (wParam != SIZE_MINIMIZED)
-	//	{
-	//		if (blueGUI::g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED)
-	//		{
-	//			blueGUI::WaitForLastSubmittedFrame();
-	//			blueGUI::CleanupRenderTarget();
-	//			HRESULT result = blueGUI::g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
-	//			assert(SUCCEEDED(result) && "Failed to resize swapchain.");
-	//			blueGUI::CreateRenderTarget();
-	//		}
-	//	}
-	//} return 0;
-
 	case WM_SYSCOMMAND:
 	{
 		if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
@@ -297,11 +282,11 @@ void Gui::RenderGui()
 		ImGui::RenderPlatformWindowsDefault(nullptr, (void*)dx->g_pCommandList.Get());
 	}
 
-	//dx->g_pSwapChain->Present(1, 0); // Present with vsync
+	dx->g_pSwapChain->Present(1, 0); // Present with vsync
 	//g_pSwapChain->Present(0, 0); // Present without vsync
 
-	//UINT64 fenceValue = g_fenceLastSignaledValue + 1;
-	//g_pd3dCommandQueue->Signal(g_fence.Get(), fenceValue);
-	//g_fenceLastSignaledValue = fenceValue;
-	//frameCtx->FenceValue = fenceValue;
+	UINT64 fenceValue = dx->g_fenceLastSignaledValue[dx->g_pFrameIndex] + 1;
+	dx->g_pCommandQueue->Signal(dx->g_pFence[dx->g_pFrameIndex].Get(), fenceValue);
+	dx->g_fenceLastSignaledValue[dx->g_pFrameIndex] = fenceValue;
+	dx->g_pFenceValue[dx->g_pFrameIndex] = fenceValue;
 }

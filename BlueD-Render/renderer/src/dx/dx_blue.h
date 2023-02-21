@@ -28,6 +28,7 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12Fence>					g_pFence[g_FrameCount];
 	uint64_t											g_pFenceValue[g_FrameCount];
+	uint64_t											g_fenceLastSignaledValue[g_FrameCount];
 	HANDLE												g_pFenceEvent; // a handle to an event when our fence is unlocked by the gpu
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>		g_pRtvHeap;
 	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap>		g_pDsvHeap;

@@ -15,17 +15,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 	// initialize dx before initialize ImGui
 	dx.Init();
 
-	gui.InitGui();
+	//gui.dx = &dx;
+	//gui.InitGui();
 
-	while (!gui.quit)
+	MSG msg;
+	ZeroMemory(&msg, sizeof(MSG));
+	while (true)
 	{
-		// render gui
-		gui.Render();
-		// draw something
-		dx.Render();
+		if (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			if (msg.message == WM_QUIT)
+				break;
+
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		else
+		{
+			// render gui
+			//gui.Render();
+			dx.Render();
+		}
 	}
 	
-	gui.CleanUp();
+	//gui.CleanUp();
 	dx.Cleanup();
 
 	return EXIT_SUCCESS;

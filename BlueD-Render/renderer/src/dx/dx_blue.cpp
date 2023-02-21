@@ -4,10 +4,7 @@ using Microsoft::WRL::ComPtr;
 
 DXBlue::DXBlue(uint32_t width, uint32_t height, HWND hwnd) : g_ScreenWidth(width), g_ScreenHeight(height), g_hWnd(hwnd){};
 
-DXBlue::~DXBlue()
-{
-
-}
+DXBlue::~DXBlue(){}
 
 void DXBlue::Init()
 {
@@ -205,7 +202,7 @@ void DXBlue::UpdatePipeline()
 
 	// we can only reset an allocator once the gpu is done with it
 	// resetting an allocator frees the memory that the command list was stored in
-	ThrowIfFailed(g_pCommandAllocator[g_FrameCount]->Reset());
+	ThrowIfFailed(g_pCommandAllocator[g_pFrameIndex]->Reset());
 
 	// reset the command list. by resetting the command list we are putting it into
 	// a recording state so we can start recording commands into the command allocator.
@@ -217,7 +214,7 @@ void DXBlue::UpdatePipeline()
 	// but in this tutorial we are only clearing the rtv, and do not actually need
 	// anything but an initial default pipeline, which is what we get by setting
 	// the second parameter to NULL
-	ThrowIfFailed(g_pCommandList->Reset(g_pCommandAllocator[g_FrameCount].Get(), nullptr));
+	ThrowIfFailed(g_pCommandList->Reset(g_pCommandAllocator[g_pFrameIndex].Get(), nullptr));
 
 	// here we start recording commands into the commandList (which all the commands will be stored in the commandAllocator)
 	// transition the "frameIndex" render target from the present state to the render target state so the command list draws to it starting from here
@@ -246,7 +243,7 @@ void DXBlue::UpdatePipeline()
 
 void DXBlue::Render()
 {
-	//UpdatePipeline(); // update the pipeline by sending commands to the commandqueue
+	UpdatePipeline(); // update the pipeline by sending commands to the commandqueue
 
 	// create an array of command lists (only one command list here)
 	ID3D12CommandList* ppCommandLists[] = { g_pCommandList.Get() };
@@ -258,9 +255,9 @@ void DXBlue::Render()
 	// has finished because the fence value will be set to "fenceValue" from the GPU since the command
 	// queue is being executed on the GPU
 	ThrowIfFailed(g_pCommandQueue->Signal(g_pFence[g_pFrameIndex].Get(), g_pFenceValue[g_pFrameIndex]));
-
 	// present the current backbuffer
 	ThrowIfFailed(g_pSwapChain->Present(1, 0));
+
 }
 
 void DXBlue::Cleanup()
@@ -277,6 +274,7 @@ void DXBlue::Cleanup()
 	SAFE_RELEASE(g_pCommandQueue);
 	SAFE_RELEASE(g_pRtvHeap);
 	SAFE_RELEASE(g_pDsvHeap);
+	SAFE_RELEASE(g_pSrvHeap);
 	SAFE_RELEASE(g_pCommandList);
 
 	for (int i = 0; i < g_FrameCount; ++i)

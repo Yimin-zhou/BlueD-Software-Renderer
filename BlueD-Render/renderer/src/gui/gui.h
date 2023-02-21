@@ -29,7 +29,7 @@ public:
 	// ImGui IO
 	ImGuiIO					io;
 	// DX12 object
-	DXBlue*					dx = nullptr;
+	DXBlue*					dx;
 
 	void InitWindow();
 	void InitGui();
