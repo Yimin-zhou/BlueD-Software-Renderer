@@ -45,7 +45,7 @@ namespace blueGUI
 	// Dx Data
 	struct FrameContext
 	{
-		ComPtr<ID3D12CommandAllocator> CommandAllocator;
+		ID3D12CommandAllocator* CommandAllocator;
 		int64_t                 FenceValue;
 	};
 	int32_t const				NUM_FRAMES_IN_FLIGHT = 3;
@@ -53,14 +53,14 @@ namespace blueGUI
 	uint32_t                    g_frameIndex = 0;
 
 	int32_t const               NUM_BACK_BUFFERS = 3;
-	ComPtr<ID3D12Device>				g_pd3dDevice = nullptr;
-	ComPtr<ID3D12DescriptorHeap>		g_pd3dRtvDescHeap = nullptr;
-	ComPtr<ID3D12DescriptorHeap>		g_pd3dSrvDescHeap = nullptr;
-	ComPtr<ID3D12CommandQueue>			g_pd3dCommandQueue = nullptr;
-	ComPtr<ID3D12GraphicsCommandList>	g_pd3dCommandList = nullptr;
-	ComPtr<ID3D12Fence>				g_fence = nullptr;
-	ComPtr<IDXGISwapChain3>			g_pSwapChain = nullptr;
-	ComPtr<ID3D12Resource>				g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
+	ID3D12Device* g_pd3dDevice = nullptr;
+	ID3D12DescriptorHeap* g_pd3dRtvDescHeap = nullptr;
+	ID3D12DescriptorHeap* g_pd3dSrvDescHeap = nullptr;
+	ID3D12CommandQueue* g_pd3dCommandQueue = nullptr;
+	ID3D12GraphicsCommandList* g_pd3dCommandList = nullptr;
+	ID3D12Fence* g_fence = nullptr;
+	IDXGISwapChain3*g_pSwapChain = nullptr;
+	ID3D12Resource* g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
 	HANDLE                      g_fenceEvent = nullptr;
 	uint64_t                    g_fenceLastSignaledValue = 0;
 	HANDLE                      g_hSwapChainWaitableObject = nullptr;
@@ -164,7 +164,7 @@ namespace blueGUI
 				if (g_pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_frameContext[i].CommandAllocator)) != S_OK)
 					return false;
 
-			if (g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator.Get(), nullptr, IID_PPV_ARGS(&g_pd3dCommandList)) != S_OK ||
+			if (g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator, nullptr, IID_PPV_ARGS(&g_pd3dCommandList)) != S_OK ||
 				g_pd3dCommandList->Close() != S_OK)
 				return false;
 
@@ -209,7 +209,7 @@ namespace blueGUI
 		{
 			IDXGISwapChain1* swapChain1 = nullptr;
 
-			if (dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue.Get(), window, &swapChainDesc , nullptr, nullptr, &swapChain1) != S_OK)
+			if (dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue, window, &swapChainDesc , nullptr, nullptr, &swapChain1) != S_OK)
 				return false;
 			if (swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
 				return false;
@@ -338,8 +338,8 @@ namespace blueGUI
 
 		// Setup Platform/Renderer backends
 		ImGui_ImplWin32_Init(window);
-		ImGui_ImplDX12_Init(g_pd3dDevice.Get(), NUM_FRAMES_IN_FLIGHT,
-			DXGI_FORMAT_R8G8B8A8_UNORM, g_pd3dSrvDescHeap.Get(),
+		ImGui_ImplDX12_Init(g_pd3dDevice, NUM_FRAMES_IN_FLIGHT,
+			DXGI_FORMAT_R8G8B8A8_UNORM, g_pd3dSrvDescHeap,
 			g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
 			g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
 
@@ -481,11 +481,11 @@ namespace blueGUI
 		D3D12_RESOURCE_BARRIER barrier = {};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx].Get();
+		barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx];
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		g_pd3dCommandList->Reset(frameCtx->CommandAllocator.Get(), nullptr);
+		g_pd3dCommandList->Reset(frameCtx->CommandAllocator, nullptr);
 		g_pd3dCommandList->ResourceBarrier(1, &barrier);
 
 		// Render Dear ImGui graphics
@@ -493,26 +493,26 @@ namespace blueGUI
 		g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
 		g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
 		g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList.Get());
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList);
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 		g_pd3dCommandList->ResourceBarrier(1, &barrier);
 		g_pd3dCommandList->Close();
 
-		g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)g_pd3dCommandList.Get());
+		g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)g_pd3dCommandList);
 
 		// Update and Render additional Platform Windows
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList.Get());
+			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
 		}
 
 		g_pSwapChain->Present(1, 0); // Present with vsync
 		//g_pSwapChain->Present(0, 0); // Present without vsync
 
 		UINT64 fenceValue = g_fenceLastSignaledValue + 1;
-		g_pd3dCommandQueue->Signal(g_fence.Get(), fenceValue);
+		g_pd3dCommandQueue->Signal(g_fence, fenceValue);
 		g_fenceLastSignaledValue = fenceValue;
 		frameCtx->FenceValue = fenceValue;
 	}
