@@ -46,12 +46,12 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin\intermediate\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\shared;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)src;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\shared;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)bin\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(SolutionDir)bin\intermediate\$(Platform)\$(Configuration)\</IntDir>
-    <IncludePath>C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\shared;$(IncludePath)</IncludePath>
+    <IncludePath>$(ProjectDir)src;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\shared;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -86,6 +86,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\dx\dx_blue.cpp" />
     <ClCompile Include="src\gui\gui.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="vendor\ImGui\imgui.cpp" />
@@ -97,6 +98,9 @@
     <ClCompile Include="vendor\ImGui\imgui_widgets.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="src\dx\d3dx12.h" />
+    <ClInclude Include="src\dx\dx_blue.h" />
+    <ClInclude Include="src\dx\dx_helper.h" />
     <ClInclude Include="src\gui\gui.h" />
     <ClInclude Include="vendor\ImGui\imconfig.h" />
     <ClInclude Include="vendor\ImGui\imgui.h" />

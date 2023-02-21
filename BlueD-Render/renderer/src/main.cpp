@@ -5,31 +5,28 @@
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 {
-	// create window
-	blueGUI::CreateHWindow();
-	// create dx12 device
-	if (!blueGUI::CreateDevice())
-	{
-		blueGUI::DestroyDevice();
-		::UnregisterClassW(blueGUI::windowClass.lpszClassName, blueGUI::windowClass.hInstance);
-		return 1;
-	}
 
-	ImGuiIO io = blueGUI::CreateGui();
+	// create gui object
+	Gui gui;
+	gui.InitWindow();
 
-	while (!blueGUI::quit)
+	// create dx12 object
+	DXBlue dx = DXBlue(gui.windowWidth, gui.windowHeight, gui.window);
+	// initialize dx before initialize ImGui
+	dx.Init();
+
+	gui.InitGui();
+
+	while (!gui.quit)
 	{
 		// render gui
-		blueGUI::StartRenderGui();
-		blueGUI::RenderGui(io);
-
-		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		gui.Render();
+		// draw something
+		dx.Render();
 	}
-
-	// clean up
-	blueGUI::DestroyGui();
-	blueGUI::DestroyDevice();
-	blueGUI::DestroyHWindow();
+	
+	gui.CleanUp();
+	dx.Cleanup();
 
 	return EXIT_SUCCESS;
 }
