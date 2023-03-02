@@ -1,35 +1,51 @@
-#include "gui.h"
+#include "render.h"
+#include "window.h"
 
 #include <iostream>
 #include <thread>
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 {
+	// create window object
+	blue::Window window = blue::Window(800, 500);
 	// create window
-	blueGUI::CreateHWindow();
-	// create dx12 device
-	if (!blueGUI::CreateDevice())
+	window.CreateHWindow();
+
+	// create render object
+	blue::Render render = blue::Render(window.windowHandler);
+	// create render device
+	if (!render.CreateDevice())
 	{
-		blueGUI::DestroyDevice();
-		::UnregisterClassW(blueGUI::windowClass.lpszClassName, blueGUI::windowClass.hInstance);
+		render.DestroyDevice();
+		::UnregisterClassW(window.windowClass.lpszClassName, window.windowClass.hInstance);
 		return 1;
 	}
+	// create render GUI
+	render.CreateGui();
 
-	ImGuiIO io = blueGUI::CreateGui();
-
-	while (!blueGUI::quit)
+	while (!window.quit)
 	{
-		// render gui
-		blueGUI::StartRenderGui();
-		blueGUI::RenderGui(io);
+		// Poll and handle messages (inputs, window resize, etc.)
+		{
+			MSG msg;
+			while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
+			{
+				::TranslateMessage(&msg);
+				::DispatchMessage(&msg);
+				if (msg.message == WM_QUIT)
+					window.quit = true;
+			}
+		}
 
-		//std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		// render gui
+		render.StartNewGuiFrame();
+		render.RenderGui();
 	}
 
 	// clean up
-	blueGUI::DestroyGui();
-	blueGUI::DestroyDevice();
-	blueGUI::DestroyHWindow();
+	render.DestroyGui();
+	render.DestroyDevice();
+	window.DestroyHWindow();
 
 	return EXIT_SUCCESS;
 }

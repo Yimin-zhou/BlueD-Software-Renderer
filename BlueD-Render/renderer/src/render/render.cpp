@@ -1,102 +1,31 @@
+#include "render.h"
 #include "gui.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// handle window event
-LRESULT WINAPI WindowProcess(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+namespace blue
 {
-	if (ImGui_ImplWin32_WndProcHandler(hwnd, msg, wParam, lParam)) return true;
-
-	switch (msg)
+	Render::Render(HWND window)
 	{
-	case WM_SIZE:
-	{
-		if (wParam != SIZE_MINIMIZED)
-		{
-			if (blueGUI::g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED)
-			{
-				blueGUI::WaitForLastSubmittedFrame();
-				blueGUI::CleanupRenderTarget();
-				HRESULT result = blueGUI::g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
-				assert(SUCCEEDED(result) && "Failed to resize swapchain.");
-				blueGUI::CreateRenderTarget();
-			}
-		}
-	} return 0;
+		// Dx Data
+		uint32_t                    g_frameIndex = 0;
 
-	case WM_SYSCOMMAND:
-	{
-		if ((wParam & 0xfff0) == SC_KEYMENU) return 0;
-	} break;
+		g_pd3dDevice = nullptr;
+		g_pd3dRtvDescHeap = nullptr;
+		g_pd3dSrvDescHeap = nullptr;
+		g_pd3dCommandQueue = nullptr;
+		g_pd3dCommandList = nullptr;
+		g_fence = nullptr;
+		g_fenceEvent = nullptr;
+		g_fenceLastSignaledValue = 0;
+		g_pSwapChain = nullptr;
+		g_hSwapChainWaitableObject = nullptr;
+		windowHandler = window;
 
-	case WM_DESTROY:
-	{
-		::PostQuitMessage(0);
-	} return 0;
-
+		clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	}
 
-	return ::DefWindowProcW(hwnd, msg, wParam, lParam);
-}
-
-namespace blueGUI
-{
-	// Dx Data
-	struct FrameContext
-	{
-		ID3D12CommandAllocator* CommandAllocator;
-		int64_t                 FenceValue;
-	};
-	int32_t const				NUM_FRAMES_IN_FLIGHT = 3;
-	FrameContext                g_frameContext[NUM_FRAMES_IN_FLIGHT] = {};
-	uint32_t                    g_frameIndex = 0;
-
-	int32_t const               NUM_BACK_BUFFERS = 3;
-	ID3D12Device*				g_pd3dDevice = nullptr;
-	ID3D12DescriptorHeap*		g_pd3dRtvDescHeap = nullptr;
-	ID3D12DescriptorHeap*		g_pd3dSrvDescHeap = nullptr;
-	ID3D12CommandQueue*			g_pd3dCommandQueue = nullptr;
-	ID3D12GraphicsCommandList*	g_pd3dCommandList = nullptr;
-	ID3D12Fence*				g_fence = nullptr;
-	HANDLE                      g_fenceEvent = nullptr;
-	uint64_t                    g_fenceLastSignaledValue = 0;
-	IDXGISwapChain3*			g_pSwapChain = nullptr;
-	HANDLE                      g_hSwapChainWaitableObject = nullptr;
-	ID3D12Resource*				g_mainRenderTargetResource[NUM_BACK_BUFFERS] = {};
-	D3D12_CPU_DESCRIPTOR_HANDLE g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS] = {};
-
-	// Window data
-	bool		quit = false;
-	HWND		window = nullptr;
-	WNDCLASSEXW	windowClass = {};
-	POINTS		position = {};
-	bool		show_demo_window = false;
-	ImVec4		clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-	void CreateHWindow()
-	{
-		// fill window parameters
-		windowClass = { sizeof(windowClass), CS_CLASSDC, WindowProcess, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"BlueD Render Class", nullptr };
-		if(!::RegisterClassExW(&windowClass))
-		{
-			MessageBox(nullptr, "Error registering class",
-				"Error", MB_OK | MB_ICONERROR);
-			return;
-		}
-
-		window = ::CreateWindowW(windowClass.lpszClassName, L"BlueD Render", WS_OVERLAPPEDWINDOW, 3000, 200, 1280, 800, nullptr, nullptr, windowClass.hInstance, nullptr);
-
-		::ShowWindow(window, SW_SHOWDEFAULT);
-		::UpdateWindow(window);
-	}
-
-	void DestroyHWindow()
-	{
-		::DestroyWindow(window);
-		::UnregisterClassW(windowClass.lpszClassName, windowClass.hInstance);
-	}
-
-	bool CreateDevice()
+	bool Render::CreateDevice()
 	{
 		// Setup swap chain
 		DXGI_SWAP_CHAIN_DESC1 sd;
@@ -198,7 +127,7 @@ namespace blueGUI
 			IDXGISwapChain1* swapChain1 = nullptr;
 			if (CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)) != S_OK)
 				return false;
-			if (dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue, window, &sd, nullptr, nullptr, &swapChain1) != S_OK)
+			if (dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue, windowHandler, &sd, nullptr, nullptr, &swapChain1) != S_OK)
 				return false;
 			if (swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
 				return false;
@@ -213,7 +142,7 @@ namespace blueGUI
 		return true;
 	}
 
-	void DestroyDevice()
+	void Render::DestroyDevice()
 	{
 		CleanupRenderTarget();
 
@@ -237,12 +166,9 @@ namespace blueGUI
 			pDebug->Release();
 		}
 	#endif
-
-		::DestroyWindow(window);
-		::UnregisterClassW(windowClass.lpszClassName, windowClass.hInstance);
 	}
 
-	void CreateRenderTarget()
+	void Render::CreateRenderTarget()
 	{
 		for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 		{
@@ -253,7 +179,7 @@ namespace blueGUI
 		}
 	}
 
-	void CleanupRenderTarget()
+	void Render::CleanupRenderTarget()
 	{
 		WaitForLastSubmittedFrame();
 
@@ -261,7 +187,7 @@ namespace blueGUI
 			if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = nullptr; }
 	}
 
-	void WaitForLastSubmittedFrame()
+	void Render::WaitForLastSubmittedFrame()
 	{
 		FrameContext* frameCtx = &g_frameContext[g_frameIndex % NUM_FRAMES_IN_FLIGHT];
 
@@ -277,7 +203,7 @@ namespace blueGUI
 		WaitForSingleObject(g_fenceEvent, INFINITE);
 	}
 
-	FrameContext* WaitForNextFrameResources()
+	FrameContext* Render::WaitForNextFrameResources()
 	{
 		UINT nextFrameIndex = g_frameIndex + 1;
 		g_frameIndex = nextFrameIndex;
@@ -300,7 +226,7 @@ namespace blueGUI
 		return frameCtx;
 	}
 
-	ImGuiIO CreateGui()
+	void Render::CreateGui()
 	{
 		// Setup Dear ImGui context
 		IMGUI_CHECKVERSION();
@@ -328,16 +254,14 @@ namespace blueGUI
 		}
 
 		// Setup Platform/Renderer backends
-		ImGui_ImplWin32_Init(window);
+		ImGui_ImplWin32_Init(windowHandler);
 		ImGui_ImplDX12_Init(g_pd3dDevice, NUM_FRAMES_IN_FLIGHT,
 			DXGI_FORMAT_R8G8B8A8_UNORM, g_pd3dSrvDescHeap,
 			g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
 			g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
-
-		return io;
 	}
 
-	void DestroyGui()
+	void Render::DestroyGui()
 	{
 		WaitForLastSubmittedFrame();
 
@@ -347,24 +271,16 @@ namespace blueGUI
 		ImGui::DestroyContext();
 	}
 
-	void StartRenderGui()
+	void Render::StartNewGuiFrame()
 	{
-		// Poll and handle messages (inputs, window resize, etc.)
-		MSG msg;
-		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
-		{
-			::TranslateMessage(&msg);
-			::DispatchMessage(&msg);
-			if (msg.message == WM_QUIT)
-				quit = true;
-		}
+
 		// Start the Dear ImGui frame
 		ImGui_ImplDX12_NewFrame();
 		ImGui_ImplWin32_NewFrame();
 		ImGui::NewFrame();
 	}
 
-	void RenderGui(ImGuiIO& io)
+	void Render::RenderGui()
 	{
 		// dockspace
 		{
@@ -446,65 +362,53 @@ namespace blueGUI
 			ImGui::End();
 		}
 
-		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-		if (show_demo_window)
-			ImGui::ShowDemoWindow(&show_demo_window);
-
-		// 2. Show Debug window
-		{
-			ImGui::Begin("Debug: ");                          
-
-			ImGui::Text("This is some useful text.");               
-			ImGui::Checkbox("Demo Window", &show_demo_window);      
-
-			ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-			ImGui::End();
-		}
-
-		// Rendering
+		// set up gui
+		AddGui();
 		ImGui::Render();
 
 		// DX12
-		FrameContext* frameCtx = WaitForNextFrameResources();
-		UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
-		frameCtx->CommandAllocator->Reset();
-
-		D3D12_RESOURCE_BARRIER barrier = {};
-		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx];
-		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		g_pd3dCommandList->Reset(frameCtx->CommandAllocator, nullptr);
-		g_pd3dCommandList->ResourceBarrier(1, &barrier);
-
-		// Render Dear ImGui graphics
-		const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-		g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
-		g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
-		g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList);
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		g_pd3dCommandList->ResourceBarrier(1, &barrier);
-		g_pd3dCommandList->Close();
-
-		g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)&g_pd3dCommandList);
-
-		// Update and Render additional Platform Windows
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
-			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
+			FrameContext* frameCtx = WaitForNextFrameResources();
+			UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
+			frameCtx->CommandAllocator->Reset();
+
+			D3D12_RESOURCE_BARRIER barrier = {};
+			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+			barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx];
+			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			g_pd3dCommandList->Reset(frameCtx->CommandAllocator, nullptr);
+			g_pd3dCommandList->ResourceBarrier(1, &barrier);
+
+			// Render Dear ImGui graphics
+			const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+			g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
+			g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
+			g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
+			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList);
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+			g_pd3dCommandList->ResourceBarrier(1, &barrier);
+			g_pd3dCommandList->Close();
+
+			g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)&g_pd3dCommandList);
+
+			// Update and Render additional Platform Windows
+			if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+			{
+				ImGui::UpdatePlatformWindows();
+				ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
+			}
+
+			g_pSwapChain->Present(1, 0); // Present with vsync
+			//g_pSwapChain->Present(0, 0); // Present without vsync
+
+			UINT64 fenceValue = g_fenceLastSignaledValue + 1;
+			g_pd3dCommandQueue->Signal(g_fence, fenceValue);
+			g_fenceLastSignaledValue = fenceValue;
+			frameCtx->FenceValue = fenceValue;
 		}
-
-		g_pSwapChain->Present(1, 0); // Present with vsync
-		//g_pSwapChain->Present(0, 0); // Present without vsync
-
-		UINT64 fenceValue = g_fenceLastSignaledValue + 1;
-		g_pd3dCommandQueue->Signal(g_fence, fenceValue);
-		g_fenceLastSignaledValue = fenceValue;
-		frameCtx->FenceValue = fenceValue;
 	}
 }
