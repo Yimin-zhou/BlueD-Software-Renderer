@@ -1,28 +1,43 @@
 #include "render.h"
 #include "gui.h"
 
-extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
-
 namespace blue
 {
-	Render::Render(HWND window)
+	Render::Render(HWND window) :
+		g_pd3dDevice(nullptr),
+		g_pd3dRtvDescHeap(nullptr),
+		g_pd3dSrvDescHeap(nullptr),
+		g_pd3dCommandQueue(nullptr),
+		g_pd3dCommandList(nullptr),
+		g_fence(nullptr),
+		g_fenceEvent(nullptr),
+		g_fenceLastSignaledValue(0),
+		g_pSwapChain(nullptr),
+		g_hSwapChainWaitableObject(nullptr),
+		windowHandler(window)
 	{
-		// Dx Data
-		uint32_t                    g_frameIndex = 0;
+			clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	}
 
-		g_pd3dDevice = nullptr;
-		g_pd3dRtvDescHeap = nullptr;
-		g_pd3dSrvDescHeap = nullptr;
-		g_pd3dCommandQueue = nullptr;
-		g_pd3dCommandList = nullptr;
-		g_fence = nullptr;
-		g_fenceEvent = nullptr;
-		g_fenceLastSignaledValue = 0;
-		g_pSwapChain = nullptr;
-		g_hSwapChainWaitableObject = nullptr;
-		windowHandler = window;
-
+	Render::Render() :
+		g_pd3dDevice(nullptr),
+		g_pd3dRtvDescHeap(nullptr),
+		g_pd3dSrvDescHeap(nullptr),
+		g_pd3dCommandQueue(nullptr),
+		g_pd3dCommandList(nullptr),
+		g_fence(nullptr),
+		g_fenceEvent(nullptr),
+		g_fenceLastSignaledValue(0),
+		g_pSwapChain(nullptr),
+		g_hSwapChainWaitableObject(nullptr),
+		windowHandler(nullptr)
+	{
 		clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+	}
+
+	Render::~Render()
+	{
+		DestroyDevice();	
 	}
 
 	bool Render::CreateDevice()
@@ -99,6 +114,7 @@ namespace blue
 		}
 
 		{
+			// Create command queue
 			D3D12_COMMAND_QUEUE_DESC desc = {};
 			desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 			desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
@@ -107,22 +123,27 @@ namespace blue
 				return false;
 		}
 
+		// Create command allocator and command lists
 		for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
 			if (g_pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_frameContext[i].CommandAllocator)) != S_OK)
 				return false;
 
+		// Create command list
 		if (g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator, nullptr, IID_PPV_ARGS(&g_pd3dCommandList)) != S_OK ||
 			g_pd3dCommandList->Close() != S_OK)
 			return false;
 
+		// Create fence
 		if (g_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence)) != S_OK)
 			return false;
 
+		// Create fence event
 		g_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
 		if (g_fenceEvent == nullptr)
 			return false;
 
 		{
+			// Create swap chain
 			IDXGIFactory4* dxgiFactory = nullptr;
 			IDXGISwapChain1* swapChain1 = nullptr;
 			if (CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)) != S_OK)
@@ -131,12 +152,13 @@ namespace blue
 				return false;
 			if (swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
 				return false;
-			swapChain1->Release();
-			dxgiFactory->Release();
-			g_pSwapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS);
-			g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
+			swapChain1->Release(); 
+			dxgiFactory->Release(); 
+			g_pSwapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS); 
+			g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject(); 
 		}
 
+		// Create render target views
 		CreateRenderTarget();
 
 		return true;
@@ -170,12 +192,13 @@ namespace blue
 
 	void Render::CreateRenderTarget()
 	{
+		// Create a RTV for each frame.
 		for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 		{
 			ID3D12Resource* pBackBuffer = nullptr;
-			g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
+			g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer)); 
 			g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, g_mainRenderTargetDescriptor[i]);
-			g_mainRenderTargetResource[i] = pBackBuffer;
+			g_mainRenderTargetResource[i] = pBackBuffer; // Store the back buffer resource for later usage
 		}
 	}
 
@@ -183,8 +206,9 @@ namespace blue
 	{
 		WaitForLastSubmittedFrame();
 
+		// Release the render target views.
 		for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
-			if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = nullptr; }
+			if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = nullptr; } // Release the back buffer resource
 	}
 
 	void Render::WaitForLastSubmittedFrame()
@@ -213,6 +237,8 @@ namespace blue
 
 		FrameContext* frameCtx = &g_frameContext[nextFrameIndex % NUM_FRAMES_IN_FLIGHT];
 		UINT64 fenceValue = frameCtx->FenceValue;
+
+		// If the next frame is not ready to be rendered yet, wait until it is ready.
 		if (fenceValue != 0) // means no fence was signaled
 		{
 			frameCtx->FenceValue = 0;
@@ -221,157 +247,22 @@ namespace blue
 			numWaitableObjects = 2;
 		}
 
+		// Wait until all previous GPU work is complete.
 		WaitForMultipleObjects(numWaitableObjects, waitableObjects, TRUE, INFINITE);
 
 		return frameCtx;
 	}
 
-	void Render::CreateGui()
+	void Render::RenderFrame()
 	{
-		// Setup Dear ImGui context
-		IMGUI_CHECKVERSION();
-		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
-		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
-
-		// Setup Dear ImGui style
-		ImGui::StyleColorsDark();
-		//ImGui::StyleColorsLight();
-		// Load Fonts
-		//io.Fonts->AddFontFromFileTTF("D:\\Programming\\CG\B\lueD-Software-Renderer\\BlueD-Render\\renderer\\resource\\font\\Roboto-Regular.ttf", 15.0f);
-		//int width, height;
-		//unsigned char* pixels = nullptr;
-		//io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
-		// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
-		ImGuiStyle& style = ImGui::GetStyle();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			style.WindowRounding = 5.0f;
-			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
-		}
-
-		// Setup Platform/Renderer backends
-		ImGui_ImplWin32_Init(windowHandler);
-		ImGui_ImplDX12_Init(g_pd3dDevice, NUM_FRAMES_IN_FLIGHT,
-			DXGI_FORMAT_R8G8B8A8_UNORM, g_pd3dSrvDescHeap,
-			g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-			g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
-	}
-
-	void Render::DestroyGui()
-	{
-		WaitForLastSubmittedFrame();
-
-		// Cleanup
-		ImGui_ImplDX12_Shutdown();
-		ImGui_ImplWin32_Shutdown();
-		ImGui::DestroyContext();
-	}
-
-	void Render::StartNewGuiFrame()
-	{
-
-		// Start the Dear ImGui frame
-		ImGui_ImplDX12_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-	}
-
-	void Render::RenderGui()
-	{
-		// dockspace
-		{
-			static bool opt_fullscreen = true;
-			static bool opt_padding = false;
-			static bool p_open = false;
-			static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-
-			// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-			// because it would be confusing to have two docking targets within each others.
-			ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
-			if (opt_fullscreen)
-			{
-				const ImGuiViewport* viewport = ImGui::GetMainViewport();
-				ImGui::SetNextWindowPos(viewport->WorkPos);
-				ImGui::SetNextWindowSize(viewport->WorkSize);
-				ImGui::SetNextWindowViewport(viewport->ID);
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-				window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-				window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-			}
-			else
-			{
-				dockspace_flags &= ~ImGuiDockNodeFlags_PassthruCentralNode;
-			}
-
-			// When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background
-			// and handle the pass-thru hole, so we ask Begin() to not render a background.
-			if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-				window_flags |= ImGuiWindowFlags_NoBackground;
-
-			// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-			// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
-			// all active windows docked into it will lose their parent and become undocked.
-			// We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
-			// any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
-			if (!opt_padding)
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-			ImGui::Begin("DockSpace Demo", &p_open, window_flags);
-			if (!opt_padding)
-				ImGui::PopStyleVar();
-
-			if (opt_fullscreen)
-				ImGui::PopStyleVar(2);
-
-			// Submit the DockSpace
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-			{
-				ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
-				ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-			}
-
-			if (ImGui::BeginMenuBar())
-			{
-				if (ImGui::BeginMenu("Options"))
-				{
-					// Disabling fullscreen would allow the window to be moved to the front of other windows,
-					// which we can't undo at the moment without finer window depth/z control.
-					ImGui::MenuItem("Fullscreen", nullptr, &opt_fullscreen);
-					ImGui::MenuItem("Padding", nullptr, &opt_padding);
-					ImGui::Separator();
-
-					if (ImGui::MenuItem("Flag: NoSplit", "", (dockspace_flags & ImGuiDockNodeFlags_NoSplit) != 0)) { dockspace_flags ^= ImGuiDockNodeFlags_NoSplit; }
-					if (ImGui::MenuItem("Flag: NoResize", "", (dockspace_flags & ImGuiDockNodeFlags_NoResize) != 0)) { dockspace_flags ^= ImGuiDockNodeFlags_NoResize; }
-					if (ImGui::MenuItem("Flag: NoDockingInCentralNode", "", (dockspace_flags & ImGuiDockNodeFlags_NoDockingInCentralNode) != 0)) { dockspace_flags ^= ImGuiDockNodeFlags_NoDockingInCentralNode; }
-					if (ImGui::MenuItem("Flag: AutoHideTabBar", "", (dockspace_flags & ImGuiDockNodeFlags_AutoHideTabBar) != 0)) { dockspace_flags ^= ImGuiDockNodeFlags_AutoHideTabBar; }
-					if (ImGui::MenuItem("Flag: PassthruCentralNode", "", (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode) != 0, opt_fullscreen)) { dockspace_flags ^= ImGuiDockNodeFlags_PassthruCentralNode; }
-					ImGui::Separator();
-
-					if (ImGui::MenuItem("Close", nullptr, false, &p_open != nullptr))
-						p_open = false;
-					ImGui::EndMenu();
-				}
-				ImGui::EndMenuBar();
-			}
-
-			ImGui::End();
-		}
-
-		// set up gui
-		AddGui();
-		ImGui::Render();
-
 		// DX12
 		{
+			// Wait for the previous frame to complete.
 			FrameContext* frameCtx = WaitForNextFrameResources();
 			UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
 			frameCtx->CommandAllocator->Reset();
 
+			// Transition the frame to be used as a render target.
 			D3D12_RESOURCE_BARRIER barrier = {};
 			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
@@ -393,6 +284,10 @@ namespace blue
 			g_pd3dCommandList->ResourceBarrier(1, &barrier);
 			g_pd3dCommandList->Close();
 
+			// TODO: Render a Triangle.
+			
+
+			// Execute the command list.
 			g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)&g_pd3dCommandList);
 
 			// Update and Render additional Platform Windows
@@ -402,9 +297,11 @@ namespace blue
 				ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
 			}
 
+			// Present the frame.
 			g_pSwapChain->Present(1, 0); // Present with vsync
 			//g_pSwapChain->Present(0, 0); // Present without vsync
 
+			// Signal and increment the fence value.
 			UINT64 fenceValue = g_fenceLastSignaledValue + 1;
 			g_pd3dCommandQueue->Signal(g_fence, fenceValue);
 			g_fenceLastSignaledValue = fenceValue;

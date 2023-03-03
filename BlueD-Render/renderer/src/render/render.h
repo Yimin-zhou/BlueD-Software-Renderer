@@ -3,10 +3,11 @@
 #include <d3d12.h>
 #include <dxgi1_4.h>
 #include <cstdint>
+#include <utility>
 
 #include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx12.h"
+#include "backends/imgui_impl_win32.h"
+#include "backends/imgui_impl_dx12.h"
 
 namespace blue
 {
@@ -15,12 +16,11 @@ namespace blue
 		ID3D12CommandAllocator* CommandAllocator;
 		int64_t                 FenceValue;
 	};
+
 	class Render
 	{
 	public:
 		ImVec4		clear_color;
-		// DX12
-		// Data
 		static const int32_t                NUM_FRAMES_IN_FLIGHT = 3;
 		static const int32_t                NUM_BACK_BUFFERS = 3;
 		FrameContext                g_frameContext[NUM_FRAMES_IN_FLIGHT] = {};
@@ -45,17 +45,15 @@ namespace blue
 
 		FrameContext* WaitForNextFrameResources();
 
-		void CreateGui();
-		void DestroyGui();
 		void CreateRenderTarget();
 		void CleanupRenderTarget();
 		void WaitForLastSubmittedFrame();
 
-		void StartNewGuiFrame();
-		void RenderGui();
+		void RenderFrame();
 
 		Render(HWND windowHandler);
-		//~Render();
+		Render();
+		~Render();
 
 	private:
 

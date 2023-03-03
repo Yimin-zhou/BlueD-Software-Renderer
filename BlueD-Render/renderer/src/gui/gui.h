@@ -1,19 +1,30 @@
 #pragma once
 
 #include "imgui.h"
+#include "backends/imgui_impl_win32.h"
+#include "backends/imgui_impl_dx12.h"
+#include "imgui_internal.h"
 
-inline void AddGui()
+#include "render.h"
+
+#include <memory>
+
+namespace blue
 {
-	// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-	ImGui::ShowDemoWindow();
-
-	// 2. Show Debug window
+	class Gui
 	{
-		ImGui::Begin("Debug: ");
+		public:
+			std::shared_ptr<blue::Render> render;
 
-		ImGui::Text("This is some useful text.");
+			void CreateGui();
+			void DestroyGui();
+			void SetDockspace();
+			void AddGui();
+			void NewGuiFrame();
+			void RenderFrame();
 
-		ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-		ImGui::End();
-	}
+			Gui(std::shared_ptr<blue::Render> r);
+			~Gui();
+	};
+
 }

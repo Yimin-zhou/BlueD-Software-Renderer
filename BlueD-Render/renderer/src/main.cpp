@@ -1,27 +1,34 @@
 #include "render.h"
 #include "window.h"
+#include "gui.h"
 
 #include <iostream>
-#include <thread>
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 {
+	// render object pointer
+	std::shared_ptr<blue::Render> render = std::make_shared<blue::Render>();
+
 	// create window object
-	blue::Window window = blue::Window(800, 500);
+	blue::Window window = blue::Window(350, 200, 800, 500);
 	// create window
+	window.SetRender(render);
 	window.CreateHWindow();
 
 	// create render object
-	blue::Render render = blue::Render(window.windowHandler);
+	render = std::make_shared<blue::Render>(window.windowHandler);
 	// create render device
-	if (!render.CreateDevice())
+	if (!render->CreateDevice())
 	{
-		render.DestroyDevice();
-		::UnregisterClassW(window.windowClass.lpszClassName, window.windowClass.hInstance);
+		render->DestroyDevice();
 		return 1;
 	}
-	// create render GUI
-	render.CreateGui();
+
+	// can resize the window now
+	window.initialized = true;
+
+	// create GUI object
+	std::shared_ptr<blue::Gui> gui = std::make_shared<blue::Gui>(render);
 
 	while (!window.quit)
 	{
@@ -38,14 +45,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 		}
 
 		// render gui
-		render.StartNewGuiFrame();
-		render.RenderGui();
-	}
+		gui->RenderFrame();
 
-	// clean up
-	render.DestroyGui();
-	render.DestroyDevice();
-	window.DestroyHWindow();
+		// render main frame
+		render->RenderFrame();
+	}
 
 	return EXIT_SUCCESS;
 }
