@@ -19,6 +19,7 @@ namespace blue
 		uint32_t		windowHeight;
 		bool			quit;
 		bool initialized;
+		bool fullScreen = true;
 		std::shared_ptr<blue::Render> render;
 		// winapi window variables
 		HWND			windowHandler;

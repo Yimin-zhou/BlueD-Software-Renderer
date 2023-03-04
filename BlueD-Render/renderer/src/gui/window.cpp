@@ -29,7 +29,21 @@ namespace blue
 			return;
 		}
 
-		windowHandler = ::CreateWindowW(windowClass.lpszClassName, L"BlueD Render", WS_OVERLAPPEDWINDOW, windowX, windowY, 1280, 800, nullptr, nullptr, windowClass.hInstance, this);
+		if (fullScreen)
+		{
+			windowHandler = ::CreateWindowW(windowClass.lpszClassName, L"BlueD Render", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), nullptr, nullptr, windowClass.hInstance, this);
+		}
+		else
+		{
+			windowHandler = ::CreateWindowW(windowClass.lpszClassName, L"BlueD Render", WS_OVERLAPPEDWINDOW, windowX, windowY, 0, 0, nullptr, nullptr, windowClass.hInstance, this);
+		}
+
+		if (!windowHandler)
+		{
+			MessageBox(nullptr, "Error creating window",
+				"Error", MB_OK | MB_ICONERROR);
+			return;
+		}
 
 		::ShowWindow(windowHandler, SW_SHOWDEFAULT);
 		::UpdateWindow(windowHandler);
@@ -73,7 +87,9 @@ namespace blue
 				assert(SUCCEEDED(result) && "Failed to resize swapchain.");
 				render->CreateRenderTarget();
 			}
+
 			return 0;
+		
 		case WM_SYSCOMMAND:
 			if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
 				return 0;

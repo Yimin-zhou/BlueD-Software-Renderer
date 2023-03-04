@@ -15,6 +15,7 @@ namespace blue
 	{
 		public:
 			std::shared_ptr<blue::Render> render;
+			HWND			windowHandler;
 
 			void CreateGui();
 			void DestroyGui();
@@ -23,7 +24,7 @@ namespace blue
 			void NewGuiFrame();
 			void RenderFrame();
 
-			Gui(std::shared_ptr<blue::Render> r);
+			Gui(std::shared_ptr<blue::Render> r, HWND w);
 			~Gui();
 	};
 

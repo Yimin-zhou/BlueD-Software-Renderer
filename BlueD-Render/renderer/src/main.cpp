@@ -23,12 +23,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 		render->DestroyDevice();
 		return 1;
 	}
+	window.SetRender(render);
 
 	// can resize the window now
 	window.initialized = true;
 
 	// create GUI object
-	std::shared_ptr<blue::Gui> gui = std::make_shared<blue::Gui>(render);
+	std::shared_ptr<blue::Gui> gui = std::make_shared<blue::Gui>(render, window.windowHandler);
 
 	while (!window.quit)
 	{
