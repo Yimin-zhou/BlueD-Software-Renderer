@@ -5,11 +5,10 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg
 namespace blue
 {
 	Window::Window(uint32_t x, uint32_t y, uint32_t width, uint32_t height) :
-		windowX(x), windowY(y), windowWidth(width), windowHeight(height)
+		windowX(x), windowY(y), windowWidth(width), windowHeight(height), render(nullptr), windowHandler(nullptr)
 	{
 		initialized = false;
 		quit = false;
-		windowHandler = nullptr;
 		windowClass = {};
 	}
 
@@ -79,7 +78,7 @@ namespace blue
 		switch (msg)
 		{
 		case WM_SIZE:
-			if (render->g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED && initialized)
+			if (render != nullptr && render->g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED && initialized)
 			{
 				render->WaitForLastSubmittedFrame();
 				render->CleanupRenderTarget();

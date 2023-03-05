@@ -6,30 +6,26 @@
 
 int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 {
-	// render object pointer
-	std::shared_ptr<blue::Render> render = std::make_shared<blue::Render>();
-
 	// create window object
 	blue::Window window = blue::Window(350, 200, 800, 500);
 	// create window
-	window.SetRender(render);
 	window.CreateHWindow();
 
 	// create render object
-	render = std::make_shared<blue::Render>(window.windowHandler);
+	std::shared_ptr<blue::Render> render = std::make_shared<blue::Render>(window.windowHandler);
 	// create render device
 	if (!render->CreateDevice())
 	{
 		render->DestroyDevice();
 		return 1;
 	}
-	window.SetRender(render);
 
+	window.SetRender(render);
 	// can resize the window now
 	window.initialized = true;
 
 	// create GUI object
-	std::shared_ptr<blue::Gui> gui = std::make_shared<blue::Gui>(render, window.windowHandler);
+	std::unique_ptr<blue::Gui> gui = std::make_unique<blue::Gui>(render, window.windowHandler);
 
 	while (!window.quit)
 	{

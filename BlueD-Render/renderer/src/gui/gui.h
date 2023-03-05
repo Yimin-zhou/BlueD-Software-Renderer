@@ -13,19 +13,19 @@ namespace blue
 {
 	class Gui
 	{
-		public:
-			std::shared_ptr<blue::Render> render;
-			HWND			windowHandler;
+	public:
+		std::shared_ptr<blue::Render>	render;
+		HWND							windowHandler;
 
-			void CreateGui();
-			void DestroyGui();
-			void SetDockspace();
-			void AddGui();
-			void NewGuiFrame();
-			void RenderFrame();
+		void CreateGui();
+		void DestroyGui();
+		void SetDockspace();
+		void AddGui();
+		void NewGuiFrame();
+		void RenderFrame();
 
-			Gui(std::shared_ptr<blue::Render> r, HWND w);
-			~Gui();
+		Gui(std::shared_ptr<blue::Render> r, HWND w);
+		~Gui();
 	};
 
 }

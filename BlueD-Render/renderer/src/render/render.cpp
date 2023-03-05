@@ -255,57 +255,54 @@ namespace blue
 
 	void Render::RenderFrame()
 	{
-		// DX12
-		{
-			// Wait for the previous frame to complete.
-			FrameContext* frameCtx = WaitForNextFrameResources();
-			UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
-			frameCtx->CommandAllocator->Reset();
+		// Wait for the previous frame to complete.
+		FrameContext* frameCtx = WaitForNextFrameResources();
+		UINT backBufferIdx = g_pSwapChain->GetCurrentBackBufferIndex();
+		frameCtx->CommandAllocator->Reset();
 
-			// Transition the frame to be used as a render target.
-			D3D12_RESOURCE_BARRIER barrier = {};
-			barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-			barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-			barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx];
-			barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			g_pd3dCommandList->Reset(frameCtx->CommandAllocator, nullptr);
-			g_pd3dCommandList->ResourceBarrier(1, &barrier);
+		// Transition the frame to be used as a render target.
+		D3D12_RESOURCE_BARRIER barrier = {};
+		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+		barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx];
+		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		g_pd3dCommandList->Reset(frameCtx->CommandAllocator, nullptr);
+		g_pd3dCommandList->ResourceBarrier(1, &barrier);
 
-			// Render Dear ImGui graphics
-			const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-			g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
-			g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
-			g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
-			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList);
-			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-			g_pd3dCommandList->ResourceBarrier(1, &barrier);
-			g_pd3dCommandList->Close();
+		// Render Dear ImGui graphics
+		const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+		g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
+		g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
+		g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList);
+		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+		g_pd3dCommandList->ResourceBarrier(1, &barrier);
+		g_pd3dCommandList->Close();
 
-			// TODO: Render a Triangle.
+		// TODO: Render a Triangle.
 			
 
-			// Execute the command list.
-			g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)&g_pd3dCommandList);
+		// Execute the command list.
+		g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)&g_pd3dCommandList);
 
-			// Update and Render additional Platform Windows
-			if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-			{
-				ImGui::UpdatePlatformWindows();
-				ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
-			}
-
-			// Present the frame.
-			g_pSwapChain->Present(1, 0); // Present with vsync
-			//g_pSwapChain->Present(0, 0); // Present without vsync
-
-			// Signal and increment the fence value.
-			UINT64 fenceValue = g_fenceLastSignaledValue + 1;
-			g_pd3dCommandQueue->Signal(g_fence, fenceValue);
-			g_fenceLastSignaledValue = fenceValue;
-			frameCtx->FenceValue = fenceValue;
+		// Update and Render additional Platform Windows
+		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
 		}
+
+		// Present the frame.
+		g_pSwapChain->Present(1, 0); // Present with vsync
+		//g_pSwapChain->Present(0, 0); // Present without vsync
+
+		// Signal and increment the fence value.
+		UINT64 fenceValue = g_fenceLastSignaledValue + 1;
+		g_pd3dCommandQueue->Signal(g_fence, fenceValue);
+		g_fenceLastSignaledValue = fenceValue;
+		frameCtx->FenceValue = fenceValue;
 	}
 }
