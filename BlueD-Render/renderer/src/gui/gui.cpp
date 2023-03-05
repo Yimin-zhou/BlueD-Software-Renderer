@@ -19,7 +19,7 @@ namespace blue
 		// Setup Dear ImGui context
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
+		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;           // Enable Docking
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;         // Enable Multi-Viewport / Platform Windows
@@ -31,10 +31,10 @@ namespace blue
 		float dpi = GetDpiForWindow(windowHandler);
 		float dpiScale = (dpi / 80.0f);
 		ImFontConfig fontCfg;
-		fontCfg.OversampleH = (int)(dpiScale + 3.0f);
-		fontCfg.OversampleV = (int)(dpiScale + 3.0f);
-		float fontSize = 16.0f * dpiScale;
-		ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Arial.ttf", fontSize, &fontCfg);
+		fontCfg.OversampleH = (int)(dpiScale + 4.0f);
+		fontCfg.OversampleV = (int)(dpiScale + 4.0f);
+		float fontSize = 14.0f * dpiScale;
+		ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Verdana.ttf", fontSize, &fontCfg);
 
 		// Scale your Style structure accordingly
 		ImGuiStyle& style = ImGui::GetStyle();
@@ -49,8 +49,8 @@ namespace blue
 
 		// Setup Platform/Renderer backends
 		ImGui_ImplWin32_Init(render->windowHandler);
-		ImGui_ImplDX12_Init(render->g_pd3dDevice, render->NUM_FRAMES_IN_FLIGHT,
-			DXGI_FORMAT_R8G8B8A8_UNORM, render->g_pd3dSrvDescHeap,
+		ImGui_ImplDX12_Init(render->g_pd3dDevice.Get(), render->NUM_FRAMES_IN_FLIGHT,
+			DXGI_FORMAT_R8G8B8A8_UNORM, (ID3D12DescriptorHeap*)render->g_pd3dSrvDescHeap.Get(),
 			render->g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
 			render->g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
@@ -203,7 +203,7 @@ namespace blue
 		ImGui::Begin("Viewport", nullptr, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse);
 		ImVec2 viewport_panel_size = ImGui::GetContentRegionAvail();
 
-		ImVec2 viewport_size = ImVec2(viewport_panel_size.y * 16 / 9, viewport_panel_size.y);
+		ImVec2 viewport_size = ImVec2(viewport_panel_size.x, viewport_panel_size.y);
 
 		ImGui::Image((void*)g_pSwapChain->GetCurrentBackBufferIndex(), viewport_size, ImVec2(0, 1), ImVec2(1, 0));
 		ImGui::End();
@@ -233,7 +233,7 @@ namespace blue
 		ShowDebugOverlay(&showDebugOverlay);
 
 		// 2. Create a window as viewport for render
-		ShowViewport(render->g_pSwapChain);
+		ShowViewport(render->g_pSwapChain.Get());
 
 		// 3. Create a window as content browser
 		ShowContent();

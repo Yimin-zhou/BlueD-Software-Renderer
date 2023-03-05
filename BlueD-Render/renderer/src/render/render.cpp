@@ -119,7 +119,7 @@ namespace blue
 			desc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 			desc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
 			desc.NodeMask = 1;
-			if (g_pd3dDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(&g_pd3dCommandQueue)) != S_OK)
+			if (g_pd3dDevice->CreateCommandQueue(&desc, IID_PPV_ARGS(g_pd3dCommandQueue.GetAddressOf())) != S_OK)
 				return false;
 		}
 
@@ -129,12 +129,12 @@ namespace blue
 				return false;
 
 		// Create command list
-		if (g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator, nullptr, IID_PPV_ARGS(&g_pd3dCommandList)) != S_OK ||
+		if (g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator, nullptr, IID_PPV_ARGS(g_pd3dCommandList.GetAddressOf())) != S_OK ||
 			g_pd3dCommandList->Close() != S_OK)
 			return false;
 
 		// Create fence
-		if (g_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&g_fence)) != S_OK)
+		if (g_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(g_fence.GetAddressOf())) != S_OK)
 			return false;
 
 		// Create fence event
@@ -148,9 +148,9 @@ namespace blue
 			IDXGISwapChain1* swapChain1 = nullptr;
 			if (CreateDXGIFactory1(IID_PPV_ARGS(&dxgiFactory)) != S_OK)
 				return false;
-			if (dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue, windowHandler, &sd, nullptr, nullptr, &swapChain1) != S_OK)
+			if (dxgiFactory->CreateSwapChainForHwnd(g_pd3dCommandQueue.Get(), windowHandler, &sd, nullptr, nullptr, &swapChain1) != S_OK)
 				return false;
-			if (swapChain1->QueryInterface(IID_PPV_ARGS(&g_pSwapChain)) != S_OK)
+			if (swapChain1->QueryInterface(IID_PPV_ARGS(g_pSwapChain.GetAddressOf())) != S_OK)
 				return false;
 			swapChain1->Release(); 
 			dxgiFactory->Release(); 
@@ -168,17 +168,17 @@ namespace blue
 	{
 		CleanupRenderTarget();
 
-		if (g_pSwapChain) { g_pSwapChain->SetFullscreenState(false, nullptr); g_pSwapChain->Release(); g_pSwapChain = nullptr; }
-		if (g_hSwapChainWaitableObject != nullptr) { CloseHandle(g_hSwapChainWaitableObject); }
-		for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-			if (g_frameContext[i].CommandAllocator) { g_frameContext[i].CommandAllocator->Release(); g_frameContext[i].CommandAllocator = nullptr; }
-		if (g_pd3dCommandQueue) { g_pd3dCommandQueue->Release(); g_pd3dCommandQueue = nullptr; }
-		if (g_pd3dCommandList) { g_pd3dCommandList->Release(); g_pd3dCommandList = nullptr; }
-		if (g_pd3dRtvDescHeap) { g_pd3dRtvDescHeap->Release(); g_pd3dRtvDescHeap = nullptr; }
-		if (g_pd3dSrvDescHeap) { g_pd3dSrvDescHeap->Release(); g_pd3dSrvDescHeap = nullptr; }
-		if (g_fence) { g_fence->Release(); g_fence = nullptr; }
-		if (g_fenceEvent) { CloseHandle(g_fenceEvent); g_fenceEvent = nullptr; }
-		if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
+		//if (g_pSwapChain) { g_pSwapChain->SetFullscreenState(false, nullptr); g_pSwapChain->Release(); g_pSwapChain = nullptr; }
+		//if (g_hSwapChainWaitableObject != nullptr) { CloseHandle(g_hSwapChainWaitableObject); }
+		//for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
+		//	if (g_frameContext[i].CommandAllocator) { g_frameContext[i].CommandAllocator->Release(); g_frameContext[i].CommandAllocator = nullptr; }
+		//if (g_pd3dCommandQueue) { g_pd3dCommandQueue->Release(); g_pd3dCommandQueue = nullptr; }
+		//if (g_pd3dCommandList) { g_pd3dCommandList->Release(); g_pd3dCommandList = nullptr; }
+		//if (g_pd3dRtvDescHeap) { g_pd3dRtvDescHeap->Release(); g_pd3dRtvDescHeap = nullptr; }
+		//if (g_pd3dSrvDescHeap) { g_pd3dSrvDescHeap->Release(); g_pd3dSrvDescHeap = nullptr; }
+		//if (g_fence) { g_fence->Release(); g_fence = nullptr; }
+		//if (g_fenceEvent) { CloseHandle(g_fenceEvent); g_fenceEvent = nullptr; }
+		//if (g_pd3dDevice) { g_pd3dDevice->Release(); g_pd3dDevice = nullptr; }
 
 	#ifdef DX12_ENABLE_DEBUG_LAYER
 		IDXGIDebug1* pDebug = nullptr;
@@ -207,8 +207,8 @@ namespace blue
 		WaitForLastSubmittedFrame();
 
 		// Release the render target views.
-		for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
-			if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = nullptr; } // Release the back buffer resource
+		//for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
+		//	if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i]->Release(); g_mainRenderTargetResource[i] = nullptr; } // Release the back buffer resource
 	}
 
 	void Render::WaitForLastSubmittedFrame()
@@ -264,35 +264,35 @@ namespace blue
 		D3D12_RESOURCE_BARRIER barrier = {};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx];
+		barrier.Transition.pResource = g_mainRenderTargetResource[backBufferIdx].Get();
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		g_pd3dCommandList->Reset(frameCtx->CommandAllocator, nullptr);
 		g_pd3dCommandList->ResourceBarrier(1, &barrier);
 
-		// Render Dear ImGui graphics
-		const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
-		g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
-		g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
-		g_pd3dCommandList->SetDescriptorHeaps(1, &g_pd3dSrvDescHeap);
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList);
-		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		g_pd3dCommandList->ResourceBarrier(1, &barrier);
-		g_pd3dCommandList->Close();
-
-		// TODO: Render a Triangle.
+			// TODO: Render a Triangle.
 			
+			
+			// Render Dear ImGui graphics
+			const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
+			g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[backBufferIdx], clear_color_with_alpha, 0, nullptr);
+			g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[backBufferIdx], FALSE, nullptr);
+			g_pd3dCommandList->SetDescriptorHeaps(1, g_pd3dSrvDescHeap.GetAddressOf());
+			ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList.Get());
+			barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+			barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+			g_pd3dCommandList->ResourceBarrier(1, &barrier);
+			g_pd3dCommandList->Close();
 
-		// Execute the command list.
-		g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)&g_pd3dCommandList);
+			// Execute the command list.
+			g_pd3dCommandQueue->ExecuteCommandLists(1, (ID3D12CommandList* const*)g_pd3dCommandList.GetAddressOf());
 
 		// Update and Render additional Platform Windows
 		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList);
+			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList.Get());
 		}
 
 		// Present the frame.
@@ -301,7 +301,7 @@ namespace blue
 
 		// Signal and increment the fence value.
 		UINT64 fenceValue = g_fenceLastSignaledValue + 1;
-		g_pd3dCommandQueue->Signal(g_fence, fenceValue);
+		g_pd3dCommandQueue->Signal(g_fence.Get(), fenceValue);
 		g_fenceLastSignaledValue = fenceValue;
 		frameCtx->FenceValue = fenceValue;
 	}

@@ -88,6 +88,7 @@
   <ItemGroup>
     <ClCompile Include="src\gui\gui.cpp" />
     <ClCompile Include="src\gui\window.cpp" />
+    <ClCompile Include="src\mesh\Triangle.cpp" />
     <ClCompile Include="src\render\render.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="vendor\ImGui\backends\imgui_impl_dx12.cpp" />
@@ -101,6 +102,7 @@
   <ItemGroup>
     <ClInclude Include="src\gui\gui.h" />
     <ClInclude Include="src\gui\window.h" />
+    <ClInclude Include="src\mesh\Triangle.h" />
     <ClInclude Include="src\render\render.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_win32.h" />
