@@ -59,13 +59,17 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\mesh;$(ProjectDir)src\helper;$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -75,22 +79,25 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\mesh;$(ProjectDir)src\helper;$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>d3d12.lib;dxgi.lib;d3dcompiler.lib;dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <FxCompile>
+      <ShaderModel>5.0</ShaderModel>
+      <EntryPointName>main</EntryPointName>
+    </FxCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\gui\gui.cpp" />
     <ClCompile Include="src\gui\window.cpp" />
-    <ClCompile Include="src\mesh\Triangle.cpp" />
-    <ClCompile Include="src\render\render.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\render\render.cpp" />
     <ClCompile Include="vendor\ImGui\backends\imgui_impl_dx12.cpp" />
     <ClCompile Include="vendor\ImGui\backends\imgui_impl_win32.cpp" />
     <ClCompile Include="vendor\ImGui\imgui.cpp" />
@@ -102,7 +109,8 @@
   <ItemGroup>
     <ClInclude Include="src\gui\gui.h" />
     <ClInclude Include="src\gui\window.h" />
-    <ClInclude Include="src\mesh\Triangle.h" />
+    <ClInclude Include="src\helper\d3dx12.h" />
+    <ClInclude Include="src\helper\helper.h" />
     <ClInclude Include="src\render\render.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_win32.h" />
