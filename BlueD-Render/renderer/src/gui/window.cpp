@@ -14,7 +14,7 @@ namespace blue
 
 	Window::~Window()
 	{
-		DestroyHWindow();
+		//DestroyHWindow();
 	}
 
 	void Window::CreateHWindow()
@@ -77,17 +77,17 @@ namespace blue
 
 		switch (msg)
 		{
-		case WM_SIZE:
-			if (render != nullptr && render->g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED && initialized)
-			{
-				render->WaitForLastSubmittedFrame();
-				render->CleanupRenderTarget();
-				HRESULT result = render->g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
-				assert(SUCCEEDED(result) && "Failed to resize swapchain.");
-				render->CreateRenderTarget();
-			}
+		//case WM_SIZE:
+		//	if (render != nullptr && render->g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED && initialized)
+		//	{
+		//		render->WaitForLastSubmittedFrame();
+		//		render->CleanupRenderTarget();
+		//		HRESULT result = render->g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
+		//		assert(SUCCEEDED(result) && "Failed to resize swapchain.");
+		//		render->CreateRenderTarget();
+		//	}
 
-			return 0;
+		//	return 0;
 		
 		case WM_SYSCOMMAND:
 			if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu

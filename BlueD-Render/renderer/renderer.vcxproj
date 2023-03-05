@@ -59,7 +59,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\helper;$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -75,7 +75,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)src\helper;$(ProjectDir)vendor\ImGui;$(ProjectDir)src\render;$(ProjectDir)src\gui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -102,6 +102,8 @@
   <ItemGroup>
     <ClInclude Include="src\gui\gui.h" />
     <ClInclude Include="src\gui\window.h" />
+    <ClInclude Include="src\helper\d3dx12.h" />
+    <ClInclude Include="src\helper\helper.h" />
     <ClInclude Include="src\mesh\Triangle.h" />
     <ClInclude Include="src\render\render.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_dx12.h" />

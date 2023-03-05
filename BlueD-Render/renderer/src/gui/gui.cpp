@@ -50,9 +50,9 @@ namespace blue
 		// Setup Platform/Renderer backends
 		ImGui_ImplWin32_Init(render->windowHandler);
 		ImGui_ImplDX12_Init(render->g_pd3dDevice.Get(), render->NUM_FRAMES_IN_FLIGHT,
-			DXGI_FORMAT_R8G8B8A8_UNORM, (ID3D12DescriptorHeap*)render->g_pd3dSrvDescHeap.Get(),
-			render->g_pd3dSrvDescHeap->GetCPUDescriptorHandleForHeapStart(),
-			render->g_pd3dSrvDescHeap->GetGPUDescriptorHandleForHeapStart());
+			DXGI_FORMAT_R8G8B8A8_UNORM, (ID3D12DescriptorHeap*)render->g_pd3dSrvImGuiDescHeap.Get(),
+			render->g_pd3dSrvImGuiDescHeap->GetCPUDescriptorHandleForHeapStart(),
+			render->g_pd3dSrvImGuiDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	void Gui::DestroyGui()
@@ -66,7 +66,6 @@ namespace blue
 	void Gui::RenderFrame()
 	{
 		NewGuiFrame();
-		SetDockspace();
 		AddGui();
 		ImGui::Render();
 	}
@@ -205,7 +204,7 @@ namespace blue
 
 		ImVec2 viewport_size = ImVec2(viewport_panel_size.x, viewport_panel_size.y);
 
-		ImGui::Image((void*)g_pSwapChain->GetCurrentBackBufferIndex(), viewport_size, ImVec2(0, 1), ImVec2(1, 0));
+		//ImGui::Image((void*)g_pSwapChain->GetCurrentBackBufferIndex(), viewport_size, ImVec2(0, 1), ImVec2(1, 0));
 		ImGui::End();
 	}
 
@@ -225,6 +224,7 @@ namespace blue
 
 	void Gui::AddGui()
 	{
+		SetDockspace();
 		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
 		ImGui::ShowDemoWindow();
 		
