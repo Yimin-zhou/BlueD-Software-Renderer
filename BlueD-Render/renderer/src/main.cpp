@@ -14,7 +14,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, INT)
 	// create render object
 	std::shared_ptr<blue::Render> render = std::make_shared<blue::Render>(window.windowHandler);
 	// create render device
-	render->CreateDevice();
+	if (!render->CreateDevice())
+	{
+		render->DestroyDevice();
+		return 1;
+	}
 
 	window.SetRender(render);
 	// can resize the window now
