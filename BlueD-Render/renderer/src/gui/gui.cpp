@@ -28,11 +28,12 @@ namespace blue
 		ImGui::StyleColorsCustom();
 
 		// add dpi awareness
+		float i = ImGui_ImplWin32_GetDpiScaleForHwnd(windowHandler);
 		float dpi = GetDpiForWindow(windowHandler);
 		float dpiScale = (dpi / 80.0f);
 		ImFontConfig fontCfg;
-		fontCfg.OversampleH = (int)(dpiScale + 2.0f);
-		fontCfg.OversampleV = (int)(dpiScale + 2.0f);
+		fontCfg.OversampleH = 2;
+		fontCfg.OversampleV = 2;
 		float fontSize = 14.0f * dpiScale;
 		ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Verdana.ttf", fontSize, &fontCfg);
 
@@ -49,10 +50,10 @@ namespace blue
 
 		// Setup Platform/Renderer backends
 		ImGui_ImplWin32_Init(render->windowHandler);
-		ImGui_ImplDX12_Init(render->g_pd3dDevice.Get(), render->NUM_FRAMES_IN_FLIGHT,
-			DXGI_FORMAT_R8G8B8A8_UNORM, (ID3D12DescriptorHeap*)render->g_pd3dSrvImGuiDescHeap.Get(),
-			render->g_pd3dSrvImGuiDescHeap->GetCPUDescriptorHandleForHeapStart(),
-			render->g_pd3dSrvImGuiDescHeap->GetGPUDescriptorHandleForHeapStart());
+		ImGui_ImplDX12_Init(render->m_device.Get(), render->NUM_FRAMES_IN_FLIGHT,
+			DXGI_FORMAT_R8G8B8A8_UNORM, (ID3D12DescriptorHeap*)render->m_srvImGuiDescHeap.Get(),
+			render->m_srvImGuiDescHeap->GetCPUDescriptorHandleForHeapStart(),
+			render->m_srvImGuiDescHeap->GetGPUDescriptorHandleForHeapStart());
 	}
 
 	void Gui::DestroyGui()
@@ -194,7 +195,7 @@ namespace blue
 		ImGui::End();
 	}
 
-	void ShowViewport(IDXGISwapChain3* g_pSwapChain)
+	void ShowViewport(std::shared_ptr<blue::Render> render)
 	{
 		// TODO: a viewport camera that change with the below viewport.
 		ImGuiIO& io = ImGui::GetIO();
@@ -204,7 +205,6 @@ namespace blue
 
 		ImVec2 viewport_size = ImVec2(viewport_panel_size.x, viewport_panel_size.y);
 
-		//ImGui::Image((void*)g_pSwapChain->GetCurrentBackBufferIndex(), viewport_size, ImVec2(0, 1), ImVec2(1, 0));
 		ImGui::End();
 	}
 
@@ -226,6 +226,24 @@ namespace blue
 	{
 		// TODO:
 		ImGui::Begin("Debug");
+		// show fps txt
+		float frameTime = 1000.0f / ImGui::GetIO().Framerate;
+		ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+		ImGui::Text("Frame Time: %.3f ms", frameTime);
+
+		// show fps graph
+		static float fpsHistory[120] = { 0 };
+		static int values_offset = 0;
+		static float refresh_time = -1.0f;
+		if (ImGui::GetTime() > refresh_time + 1.0f / 6.0f)
+		{
+			refresh_time = ImGui::GetTime();
+			fpsHistory[values_offset] = frameTime;
+			values_offset = (values_offset + 1) % IM_ARRAYSIZE(fpsHistory);
+		}
+		ImGui::PlotLines("Frame Times", fpsHistory, IM_ARRAYSIZE(fpsHistory), values_offset, "", 0.0f, 33.4f, ImVec2(0, 80));
+
+
 		ImGui::End();
 	}
 
@@ -240,7 +258,7 @@ namespace blue
 		//ShowDebugOverlay(&showDebugOverlay);
 
 		// 2. Create a window as viewport for render
-		//ShowViewport(render->g_pSwapChain.Get());
+		ShowViewport(render);
 
 		// 3. Create a window as content browser
 		ShowContent();

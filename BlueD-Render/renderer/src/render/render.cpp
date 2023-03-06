@@ -6,47 +6,47 @@ namespace blue
 {
 
 	Render::Render(HWND window) :
-		g_pd3dDevice(nullptr),
-		g_pAdapter(nullptr),
-		g_pd3dRtvDescHeap(nullptr),
-		g_pd3dSrvImGuiDescHeap(nullptr),
-		g_pd3dCommandQueue(nullptr),
-		g_pd3dCommandList(nullptr),
-		g_fence(nullptr),
-		g_fenceEvent(nullptr),
-		g_fenceLastSignaledValue(0),
-		g_pSwapChain(nullptr),
-		g_hSwapChainWaitableObject(nullptr),
-		g_pd3dRootSignature(nullptr),
-		g_pd3dPipelineState(nullptr),
-		g_pd3dVertexBuffer(nullptr),
+		m_device(nullptr),
+		m_adapter(nullptr),
+		m_swapChainRtvDescHeap(nullptr),
+		m_srvImGuiDescHeap(nullptr),
+		m_commandQueue(nullptr),
+		m_commandList(nullptr),
+		m_fence(nullptr),
+		m_fenceEvent(nullptr),
+		m_fenceValue(0),
+		m_swapChain(nullptr),
+		m_swapChainWaitableObject(nullptr),
+		m_rootSignature(nullptr),
+		m_pipelineState(nullptr),
+		m_vertexBuffer(nullptr),
 		windowHandler(window),
-		g_frameIndex(0),
-		g_viewport(0.0f, 0.0f, (float)setting::windowWidth, (float)setting::windowHeight),
-		g_scissorRect(0, 0, setting::windowWidth, setting::windowHeight)
+		m_frameIndex(0),
+		m_viewport(0.0f, 0.0f, (float)setting::windowWidth, (float)setting::windowHeight),
+		m_scissorRect(0, 0, setting::windowWidth, setting::windowHeight)
 	{
 		clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	}
 
 	Render::Render() :
-		g_pd3dDevice(nullptr),
-		g_pAdapter(nullptr),
-		g_pd3dRtvDescHeap(nullptr),
-		g_pd3dSrvImGuiDescHeap(nullptr),
-		g_pd3dCommandQueue(nullptr),
-		g_pd3dCommandList(nullptr),
-		g_fence(nullptr),
-		g_fenceEvent(nullptr),
-		g_fenceLastSignaledValue(0),
-		g_pSwapChain(nullptr),
-		g_hSwapChainWaitableObject(nullptr),
-		g_pd3dRootSignature(nullptr),
-		g_pd3dPipelineState(nullptr),
-		g_pd3dVertexBuffer(nullptr),
+		m_device(nullptr),
+		m_adapter(nullptr),
+		m_swapChainRtvDescHeap(nullptr),
+		m_srvImGuiDescHeap(nullptr),
+		m_commandQueue(nullptr),
+		m_commandList(nullptr),
+		m_fence(nullptr),
+		m_fenceEvent(nullptr),
+		m_fenceValue(0),
+		m_swapChain(nullptr),
+		m_swapChainWaitableObject(nullptr),
+		m_rootSignature(nullptr),
+		m_pipelineState(nullptr),
+		m_vertexBuffer(nullptr),
 		windowHandler(nullptr),
-		g_frameIndex(0),
-		g_viewport(0.0f, 0.0f, (float)setting::windowWidth, (float)setting::windowHeight),
-		g_scissorRect(0, 0, setting::windowWidth, setting::windowHeight)
+		m_frameIndex(0),
+		m_viewport(0.0f, 0.0f, (float)setting::windowWidth, (float)setting::windowHeight),
+		m_scissorRect(0, 0, setting::windowWidth, setting::windowHeight)
 	{
 		clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 	}
@@ -82,6 +82,7 @@ namespace blue
 		_CreateCommandQueue();
 		_CreateSwapchain();
 		_CreateRTV();
+		_CreateDSV();
 		_CreateImGuiSRV();
 		_CreateCmdAllocator();
 	}
@@ -114,12 +115,12 @@ namespace blue
 	#endif
 
 		// Create a factory for enumerating adapters and creating swap chains
-		ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(g_dxgiFactory4.GetAddressOf())));
+		ThrowIfFailed(CreateDXGIFactory2(dxgiFactoryFlags, IID_PPV_ARGS(m_dxgiFactory4.GetAddressOf())), "Creating DXGI Factory failed");
 
 		// Enumerate adapters
 		ComPtr<IDXGIAdapter1> dxgiAdapter1 = nullptr;
 
-		for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != g_dxgiFactory4->EnumAdapters1(adapterIndex, &dxgiAdapter1); adapterIndex++)
+		for (UINT adapterIndex = 0; DXGI_ERROR_NOT_FOUND != m_dxgiFactory4->EnumAdapters1(adapterIndex, &dxgiAdapter1); adapterIndex++)
 		{
 			DXGI_ADAPTER_DESC1 desc;
 			dxgiAdapter1->GetDesc1(&desc);
@@ -138,7 +139,15 @@ namespace blue
 		}
 
 		// Create the device
-		ThrowIfFailed(D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&g_pd3dDevice)));
+		ThrowIfFailed(D3D12CreateDevice(dxgiAdapter1.Get(), D3D_FEATURE_LEVEL_12_1, IID_PPV_ARGS(&m_device)), "Creating DX12 Device failed");
+
+		// Cheack for MSAA support
+		D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
+		msQualityLevels.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		msQualityLevels.SampleCount = 4;
+		msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+		msQualityLevels.NumQualityLevels = 0;
+		ThrowIfFailed(m_device->CheckFeatureSupport(D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS, &msQualityLevels, sizeof(msQualityLevels)), "Checking MSAA support failed");
 	}
 
 	void Render::_CreateCommandQueue()
@@ -146,8 +155,19 @@ namespace blue
 		D3D12_COMMAND_QUEUE_DESC queueDesc = {};
 		queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
 		queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
-		queueDesc.NodeMask = 1;
-		ThrowIfFailed(g_pd3dDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(g_pd3dCommandQueue.GetAddressOf())));
+		ThrowIfFailed(m_device->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(m_commandQueue.GetAddressOf())), "Creating Command Queue failed");
+	}
+
+	void Render::_CreateCommandList()
+	{
+		ThrowIfFailed(m_device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, m_commandAllocator.Get(), nullptr, IID_PPV_ARGS(m_commandList.GetAddressOf())) != S_OK ||
+			m_commandList->Close() != S_OK, "Creating Command List failed");
+	}
+
+	void Render::_CreateCmdAllocator()
+	{
+		// Create command allocator
+		ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(m_commandAllocator.GetAddressOf())), "Creating Command Allocator failed");
 	}
 
 	void Render::_CreateSwapchain()
@@ -170,13 +190,13 @@ namespace blue
 		}
 
 		ComPtr<IDXGISwapChain1> swapChain1 = nullptr;
-		ThrowIfFailed(g_dxgiFactory4->CreateSwapChainForHwnd(g_pd3dCommandQueue.Get(), windowHandler, &swapDesc, nullptr, nullptr, &swapChain1));
-		ThrowIfFailed(swapChain1->QueryInterface(IID_PPV_ARGS(g_pSwapChain.GetAddressOf())));
-		g_pSwapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS);
-		g_hSwapChainWaitableObject = g_pSwapChain->GetFrameLatencyWaitableObject();
+		ThrowIfFailed(m_dxgiFactory4->CreateSwapChainForHwnd(m_commandQueue.Get(), windowHandler, &swapDesc, nullptr, nullptr, &swapChain1), "Creating Swapchain failed");
+		ThrowIfFailed(swapChain1->QueryInterface(IID_PPV_ARGS(m_swapChain.GetAddressOf())), "Creating SwapChain QueryInterface failed");
+		m_swapChain->SetMaximumFrameLatency(NUM_BACK_BUFFERS);
+		m_swapChainWaitableObject = m_swapChain->GetFrameLatencyWaitableObject();
 
-		ThrowIfFailed(swapChain1.As(&g_pSwapChain));
-		g_frameIndex = g_pSwapChain->GetCurrentBackBufferIndex();
+		ThrowIfFailed(swapChain1.As(&m_swapChain), "Creating Copying Swapchain failed");
+		m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 	}
 
 	void Render::_CreateRTV()
@@ -188,25 +208,56 @@ namespace blue
 			rtvHeapDesc.NumDescriptors = NUM_BACK_BUFFERS;
 			rtvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
 			rtvHeapDesc.NodeMask = 1;
-			ThrowIfFailed(g_pd3dDevice->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&g_pd3dRtvDescHeap)));
+			ThrowIfFailed(m_device->CreateDescriptorHeap(&rtvHeapDesc, IID_PPV_ARGS(&m_swapChainRtvDescHeap)), "Creating Main RTV Heap Desc failed");
 
-			SIZE_T rtvDescriptorSize = g_pd3dDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+			SIZE_T rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 
-			CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(g_pd3dRtvDescHeap->GetCPUDescriptorHandleForHeapStart());
+			CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_swapChainRtvDescHeap->GetCPUDescriptorHandleForHeapStart());
 			for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 			{
-				g_mainRenderTargetDescriptor[i] = rtvHandle;
+				m_swapChainRTResourceDescHandle[i] = rtvHandle;
 				rtvHandle.ptr += rtvDescriptorSize;
 			}
 			// Create a RTV for each frame.
 			for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
 			{
 				ID3D12Resource* pBackBuffer = nullptr;
-				g_pSwapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
-				g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, g_mainRenderTargetDescriptor[i]);
-				g_mainRenderTargetResource[i] = pBackBuffer; // Store the back buffer resource for later usage
+				m_swapChain->GetBuffer(i, IID_PPV_ARGS(&pBackBuffer));
+				m_device->CreateRenderTargetView(pBackBuffer, nullptr, m_swapChainRTResourceDescHandle[i]);
+				m_swapChainRTResource[i] = pBackBuffer; // Store the back buffer resource for later usage
 			}
 		}
+	}
+
+	void Render::_CreateDSV()
+	{
+		D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {};
+		dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		dsvHeapDesc.NumDescriptors = 1;
+		dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		dsvHeapDesc.NodeMask = 1;
+		ThrowIfFailed(m_device->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(m_dsvDescHeap.GetAddressOf())), "Creating Main DSV Heap Desc failed");
+
+		D3D12_CLEAR_VALUE optClear;
+		optClear.Format = DXGI_FORMAT_D32_FLOAT;
+		optClear.DepthStencil.Depth = 1.0f;
+		optClear.DepthStencil.Stencil = 0;
+
+		// Create a DSV
+		const D3D12_HEAP_PROPERTIES defaultHeapProperties = CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT);
+		const D3D12_RESOURCE_DESC dsvBufferResourceDesc = CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, setting::windowWidth, setting::windowHeight, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL);
+		ThrowIfFailed(m_device->CreateCommittedResource(
+			&defaultHeapProperties,
+			D3D12_HEAP_FLAG_NONE,
+			&dsvBufferResourceDesc,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE,
+			&optClear,
+			IID_PPV_ARGS(m_depthStencilBuffer.GetAddressOf())), "Creating Main DSV Heap Desc failed");
+
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+		dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		m_device->CreateDepthStencilView(m_depthStencilBuffer.Get(), &dsvDesc, m_dsvDescHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	void Render::_CreateImGuiSRV()
@@ -216,14 +267,7 @@ namespace blue
 		imguiDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 		imguiDesc.NumDescriptors = 1;
 		imguiDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
-		ThrowIfFailed(g_pd3dDevice->CreateDescriptorHeap(&imguiDesc, IID_PPV_ARGS(&g_pd3dSrvImGuiDescHeap)));
-	}
-
-	void Render::_CreateCmdAllocator()
-	{
-		// Create command allocator
-		for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-			ThrowIfFailed(g_pd3dDevice->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&g_frameContext[i].CommandAllocator)));
+		ThrowIfFailed(m_device->CreateDescriptorHeap(&imguiDesc, IID_PPV_ARGS(&m_srvImGuiDescHeap)), "Creating ImGui SRV Desc Heap failed");
 	}
 
 	void Render::_CreateRootSig()
@@ -233,8 +277,8 @@ namespace blue
 
 		ComPtr<ID3DBlob> signature;
 		ComPtr<ID3DBlob> error;
-		ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, signature.GetAddressOf(), error.GetAddressOf()));
-		ThrowIfFailed(g_pd3dDevice->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(g_pd3dRootSignature.GetAddressOf())));
+		ThrowIfFailed(D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, signature.GetAddressOf(), error.GetAddressOf()), "Serializing Root Signature failed");
+		ThrowIfFailed(m_device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(m_rootSignature.GetAddressOf())), "Creating Root Signature failed");
 	}
 
 	void Render::_CreatePSO()
@@ -248,8 +292,8 @@ namespace blue
 	#else
 		UINT compileFlags = 0;
 	#endif
-		ThrowIfFailed(D3DCompileFromFile(L"D:\\Programming\\CG\\BlueD-Software-Renderer\\BlueD-Render\\renderer\\src\\render\\shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-		ThrowIfFailed(D3DCompileFromFile(L"D:\\Programming\\CG\\BlueD-Software-Renderer\\BlueD-Render\\renderer\\src\\render\\shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+		ThrowIfFailed(D3DCompileFromFile(L"D:\\Programming\\CG\\BlueD-Software-Renderer\\BlueD-Render\\renderer\\src\\render\\shaders.hlsl", nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr), "Compiling vertex shader failed");
+		ThrowIfFailed(D3DCompileFromFile(L"D:\\Programming\\CG\\BlueD-Software-Renderer\\BlueD-Render\\renderer\\src\\render\\shaders.hlsl", nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr), "Compiling fragment shader failed");
 
 		// Define the vertex input layout.
 		D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -261,7 +305,7 @@ namespace blue
 		// Describe and create the graphics pipeline state object (PSO).
 		D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
 		psoDesc.InputLayout = { inputElementDescs, _countof(inputElementDescs) };
-		psoDesc.pRootSignature = g_pd3dRootSignature.Get();
+		psoDesc.pRootSignature = m_rootSignature.Get();
 		psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
 		psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
 		psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
@@ -273,13 +317,7 @@ namespace blue
 		psoDesc.NumRenderTargets = 1;
 		psoDesc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
 		psoDesc.SampleDesc.Count = 1;
-		ThrowIfFailed(g_pd3dDevice->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&g_pd3dPipelineState)));
-	}
-
-	void Render::_CreateCommandList()
-	{
-		ThrowIfFailed(g_pd3dDevice->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, g_frameContext[0].CommandAllocator.Get(), nullptr, IID_PPV_ARGS(g_pd3dCommandList.GetAddressOf())) != S_OK ||
-			g_pd3dCommandList->Close() != S_OK);
+		ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pipelineState)), "Creating PSO failed");
 	}
 
 	void Render::_CreateVertexBuffer()
@@ -303,45 +341,44 @@ namespace blue
 		const D3D12_RESOURCE_DESC vertexBufferResourceDesc = CD3DX12_RESOURCE_DESC::Buffer(vertexBufferSize);
 
 		// Create the GPU upload buffer.
-		ThrowIfFailed(g_pd3dDevice->CreateCommittedResource(
+		ThrowIfFailed(m_device->CreateCommittedResource(
 			&uploadHeapProperties,
 			D3D12_HEAP_FLAG_NONE,
 			&vertexBufferResourceDesc,
 			D3D12_RESOURCE_STATE_GENERIC_READ,
 			nullptr,
-			IID_PPV_ARGS(&g_pd3dVertexBuffer)));
+			IID_PPV_ARGS(&m_vertexBuffer)), "Creating Vertex Buffer GPU Upload Buffer failed");
 
 		// Copy the triangle data to the vertex buffer (GPU).
 		UINT8* pVertexDataBegin;
 		CD3DX12_RANGE readRange(0, 0);        // We do not intend to read from this resource on the CPU.
-		ThrowIfFailed(g_pd3dVertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+		ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)), "Mapping Vertex Buffer failed");
 		memcpy(pVertexDataBegin, triangleVertices, sizeof(triangleVertices));
-		g_pd3dVertexBuffer->Unmap(0, nullptr);
+		m_vertexBuffer->Unmap(0, nullptr);
 
 		// Initialize the vertex buffer view.
-		g_pd3dVertexBufferView.BufferLocation = g_pd3dVertexBuffer->GetGPUVirtualAddress();
-		g_pd3dVertexBufferView.StrideInBytes = sizeof(Vertex);
-		g_pd3dVertexBufferView.SizeInBytes = vertexBufferSize;
+		m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+		m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+		m_vertexBufferView.SizeInBytes = vertexBufferSize;
 	}
 
 	void Render::_CreateSynchronization()
 	{
-		ThrowIfFailed(g_pd3dDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(g_fence.GetAddressOf())));
-		for (UINT i = 0; i < NUM_FRAMES_IN_FLIGHT; i++)
-			g_frameContext[i].FenceValue = 1;
+		ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(m_fence.GetAddressOf())), "Creating Fence failed");
+		m_fenceValue = 1;
 
 		// Create an event handle to use for frame synchronization.
-		g_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-		if (g_fenceEvent == nullptr)
+		m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+		if (m_fenceEvent == nullptr)
 		{
-			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
+			ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()), "Creating Fence Event failed");
 		}
 	}
 
 	void Render::_ResetRT()
 	{
 		for (UINT i = 0; i < NUM_BACK_BUFFERS; i++)
-			if (g_mainRenderTargetResource[i]) { g_mainRenderTargetResource[i].Reset(); }
+			if (m_swapChainRTResource[i]) { m_swapChainRTResource[i].Reset(); }
 	}
 
 	void Render::_WaitForLastSubmittedFrame()
@@ -351,37 +388,19 @@ namespace blue
 		// sample illustrates how to use fences for efficient resource usage and to
 		// maximize GPU utilization.
 
-		//FrameContext* frameCtx = &g_frameContext[g_frameIndex % NUM_FRAMES_IN_FLIGHT];
-
 		// Signal and increment the fence value.
-		UINT64 fenceValue = ++g_fenceLastSignaledValue;
-		g_pd3dCommandQueue->Signal(g_fence.Get(), fenceValue);
-		g_fenceLastSignaledValue = fenceValue;
+		UINT64 fenceValue = ++m_fenceValue;
+		m_commandQueue->Signal(m_fence.Get(), fenceValue);
+		m_fenceValue = fenceValue;
 
 		// Wait until the previous frame is finished.
-		if (g_fence->GetCompletedValue() < fenceValue)
+		if (m_fence->GetCompletedValue() < fenceValue)
 		{
-			ThrowIfFailed(g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent));
-			WaitForSingleObject(g_fenceEvent, INFINITE);
+			ThrowIfFailed(m_fence->SetEventOnCompletion(fenceValue, m_fenceEvent), "SetEventOnCompletion failed");
+			WaitForSingleObject(m_fenceEvent, INFINITE);
 		}
 
-		g_frameIndex = g_pSwapChain->GetCurrentBackBufferIndex();
-	}
-
-
-	void Render::_WaitGPU()
-	{
-		for (int i = 0; i < NUM_BACK_BUFFERS; i++)
-		{
-			uint64_t fenceValue = ++g_fenceLastSignaledValue;
-			g_pd3dCommandQueue->Signal(g_fence.Get(), g_fenceLastSignaledValue);
-			if (g_fence->GetCompletedValue() < fenceValue)
-			{
-				ThrowIfFailed(g_fence->SetEventOnCompletion(fenceValue, g_fenceEvent));
-				WaitForSingleObject(g_fenceEvent, INFINITE);
-			}
-		}
-		g_frameIndex = 0;
+		m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
 	}
 
 	void Render::ResetCommandAllocator()
@@ -389,104 +408,113 @@ namespace blue
 		// Command list allocators can only be reset when the associated 
 		// command lists have finished execution on the GPU; apps should use 
 		// fences to determine GPU execution progress.
-		ThrowIfFailed(g_frameContext[g_frameIndex].CommandAllocator->Reset());
-		ThrowIfFailed(g_pd3dCommandList->Reset(g_frameContext[g_frameIndex].CommandAllocator.Get(), g_pd3dPipelineState.Get()));
+		ThrowIfFailed(m_commandAllocator->Reset(), "Resting Command Allocator failed");
+		ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()), "Resting Command List failed");
 	}
 
 	void Render::PopulateCommandList()
 	{
 		// Set necessary state.
-		g_pd3dCommandList->SetGraphicsRootSignature(g_pd3dRootSignature.Get());
-		g_pd3dCommandList->RSSetViewports(1, &g_viewport);
-		g_pd3dCommandList->RSSetScissorRects(1, &g_scissorRect);
+		m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+		// Draw to viewport
+		m_commandList->RSSetViewports(1, &m_viewport);
+		m_commandList->RSSetScissorRects(1, &m_scissorRect);
 
-		// Indicate that the back buffer will be used as a render target.
+		// Indicate that the frame buffer will be used as a render target.
 		D3D12_RESOURCE_BARRIER barrier = {};
 		barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 		barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-		barrier.Transition.pResource = g_mainRenderTargetResource[g_frameIndex].Get();
+		barrier.Transition.pResource = m_swapChainRTResource[m_frameIndex].Get();
 		barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
 		barrier.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
 		barrier.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
-		g_pd3dCommandList->ResourceBarrier(1, &barrier);
+		m_commandList->ResourceBarrier(1, &barrier);
 
-		g_pd3dCommandList->OMSetRenderTargets(1, &g_mainRenderTargetDescriptor[g_frameIndex], FALSE, nullptr);
+		// Record commands.
+		// Output Merger is the last stage of the pipeline.
+		m_commandList->OMSetRenderTargets(1, &m_swapChainRTResourceDescHandle[m_frameIndex], FALSE, nullptr);
 
 		const float clearColor[] = { clear_color.x, clear_color.y, clear_color.z, 1.0f };
-		g_pd3dCommandList->ClearRenderTargetView(g_mainRenderTargetDescriptor[g_frameIndex], clearColor, 0, nullptr);
-		g_pd3dCommandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		g_pd3dCommandList->IASetVertexBuffers(0, 1, &g_pd3dVertexBufferView);
+		m_commandList->ClearRenderTargetView(m_swapChainRTResourceDescHandle[m_frameIndex], clearColor, 0, nullptr);
+		m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
 
 		// Draw
-		g_pd3dCommandList->DrawInstanced(3, 1, 0, 0);
+		m_commandList->DrawInstanced(3, 1, 0, 0);
 
-		ID3D12DescriptorHeap* ppHeaps[] = { g_pd3dSrvImGuiDescHeap.Get() };
-		g_pd3dCommandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
-		//g_pd3dCommandList->SetDescriptorHeaps(1, g_pd3dRtvDescHeap.GetAddressOf());
-
+		// ImGui
+		ID3D12DescriptorHeap* ppHeaps[] = { m_srvImGuiDescHeap.Get() };
+		// Set descriptor heaps (currently only for imgui)
+		m_commandList->SetDescriptorHeaps(_countof(ppHeaps), ppHeaps);
 		// Render ImGui
-		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), g_pd3dCommandList.Get());
+		ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), m_commandList.Get());
 
 		// Indicate that the back buffer(rt) will now be used to present.
 		D3D12_RESOURCE_BARRIER barrier2 = {};
-		barrier2.Transition.pResource = g_mainRenderTargetResource[g_frameIndex].Get();
+		barrier2.Transition.pResource = m_swapChainRTResource[m_frameIndex].Get();
 		barrier2.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 		barrier2.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
-		g_pd3dCommandList->ResourceBarrier(1, &barrier2);
+		m_commandList->ResourceBarrier(1, &barrier2);
 		
-		// Close befor execute
-		ThrowIfFailed(g_pd3dCommandList->Close());
+		// Close before execute
+		ThrowIfFailed(m_commandList->Close(), "Closing Command List Failed");
 	}
 
 
 	void Render::OnResize(LPARAM lParam)
 	{	
-		// TODO:
-		// resize swapchain
-		// Wait until all previous GPU work is complete.
 		_WaitForLastSubmittedFrame();
-		
-		// Release all references to the swap chain's buffers.
-		g_pd3dCommandList.Reset();
 
-		for (int i = 0; i < NUM_BACK_BUFFERS; i++)
-		{
-			g_frameContext[i].CommandAllocator.Reset();
+		ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()), "Reseting Command Allocator Failed");
 
-			g_mainRenderTargetResource[i].Reset();
-			g_mainRenderTargetDescriptor[i].ptr = 0;
-		}
+		_ResetRT();
 
+		// Resize swap chain 
+		ThrowIfFailed(m_swapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH), "Resizing Swap Chain Failed");
 
-		// Resize the swap chain.
-		ThrowIfFailed(g_pSwapChain->ResizeBuffers(
-					NUM_BACK_BUFFERS,
-						LOWORD(lParam),
-						HIWORD(lParam),
-			DXGI_FORMAT_R8G8B8A8_UNORM,
-			0));
+		m_frameIndex = 0;
 
-		g_frameIndex = g_pSwapChain->GetCurrentBackBufferIndex();
-
-		// Create the render target view.
 		_CreateRTV();
+
+		// Execute the resize commands.
+		ThrowIfFailed(m_commandList->Close(), "Closing Command List Failed");
+		ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+		m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+
+		// Wait until resize is complete.
+		_WaitForLastSubmittedFrame();
+
+		// Update the viewport transform to cover the client area.
+		m_viewport.TopLeftX = 0;
+		m_viewport.TopLeftY = 0;
+		m_viewport.Width = static_cast<float>((UINT)LOWORD(lParam));
+		m_viewport.Height = static_cast<float>((UINT)HIWORD(lParam));
+		m_scissorRect.left = 0;
+		m_scissorRect.top = 0;
+		m_scissorRect.right = (UINT)LOWORD(lParam);
+		m_scissorRect.bottom = (UINT)HIWORD(lParam);
+
+		// TODO:
+		// Update the projection matrix.
+
+		// Update the viewport transform to cover the client area.
 	}
 
 	void Render::RenderFrame()
 	{
 		// Execute the command list.
-		ID3D12CommandList* ppCommandLists[] = { g_pd3dCommandList.Get() };
-		g_pd3dCommandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
+		ID3D12CommandList* ppCommandLists[] = { m_commandList.Get() };
+		m_commandQueue->ExecuteCommandLists(_countof(ppCommandLists), ppCommandLists);
 
 		// Update and Render additional Platform Windows
 		if (ImGui::GetIO().ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			ImGui::UpdatePlatformWindows();
-			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)g_pd3dCommandList.Get());
+			ImGui::RenderPlatformWindowsDefault(nullptr, (void*)m_commandList.Get());
 		}
 
 		// Present the frame.
-		g_pSwapChain->Present(1, 0); // Present with vsync
+		m_swapChain->Present(1, 0); // Present with vsync
 
 		_WaitForLastSubmittedFrame();
 	}

@@ -91,7 +91,7 @@ namespace blue
 		{
 
 		case WM_SIZE:
-			if (render != nullptr && render->g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED && initialized)
+			if (render != nullptr && render->m_device != nullptr && wParam != SIZE_MINIMIZED && initialized)
 			{
 				//render->OnResize(lParam);
 			}
