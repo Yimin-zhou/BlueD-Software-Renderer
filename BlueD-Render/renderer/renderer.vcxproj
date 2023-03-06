@@ -106,6 +106,7 @@
     <ClInclude Include="src\helper\helper.h" />
     <ClInclude Include="src\mesh\Triangle.h" />
     <ClInclude Include="src\render\render.h" />
+    <ClInclude Include="src\render\settings.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_dx12.h" />
     <ClInclude Include="vendor\ImGui\backends\imgui_impl_win32.h" />
     <ClInclude Include="vendor\ImGui\imconfig.h" />

@@ -1,11 +1,12 @@
 #include "window.h"
+#include "settings.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 namespace blue
 {
-	Window::Window(uint32_t x, uint32_t y, uint32_t width, uint32_t height) :
-		windowX(x), windowY(y), windowWidth(width), windowHeight(height), render(nullptr), windowHandler(nullptr)
+	Window::Window() :
+		windowX(setting::windowPosX), windowY(setting::windowPosY), windowWidth(setting::windowWidth), windowHeight(setting::windowHeight), render(nullptr), windowHandler(nullptr)
 	{
 		initialized = false;
 		quit = false;
@@ -14,28 +15,38 @@ namespace blue
 
 	Window::~Window()
 	{
-		//DestroyHWindow();
+		DestroyHWindow();
 	}
 
 	void Window::CreateHWindow()
 	{
-		// fill window parameters
-		windowClass = { sizeof(windowClass), CS_CLASSDC, WindowProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Blue Render Class", nullptr };
-		if (!::RegisterClassExW(&windowClass))
-		{
-			MessageBox(nullptr, "Error registering class",
-				"Error", MB_OK | MB_ICONERROR);
-			return;
-		}
+		const wchar_t CLASS_NAME[] = L"BlueRenderWindowClass";
+		const wchar_t WINDOW_TITLE[] = L"Blue Render";
 
-		if (fullScreen)
-		{
-			windowHandler = ::CreateWindowW(windowClass.lpszClassName, L"BlueD Render", WS_OVERLAPPEDWINDOW, 0, 0, GetSystemMetrics(SM_CXSCREEN), GetSystemMetrics(SM_CYSCREEN), nullptr, nullptr, windowClass.hInstance, this);
-		}
-		else
-		{
-			windowHandler = ::CreateWindowW(windowClass.lpszClassName, L"BlueD Render", WS_OVERLAPPEDWINDOW, windowX, windowY, 0, 0, nullptr, nullptr, windowClass.hInstance, this);
-		}
+		// register window class
+		windowClass.cbSize = sizeof(WNDCLASSEXW);
+		windowClass.style = CS_HREDRAW | CS_VREDRAW;
+		windowClass.lpfnWndProc = WindowProc;
+		windowClass.cbClsExtra = 0;
+		windowClass.cbWndExtra = 0;
+		windowClass.hInstance = GetModuleHandle(NULL);
+		windowClass.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+		windowClass.hCursor = LoadCursor(NULL, IDC_ARROW);
+		windowClass.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+		windowClass.lpszMenuName = NULL;
+		windowClass.lpszClassName = CLASS_NAME;
+		windowClass.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+		::RegisterClassExW(&windowClass);
+
+		// Get the dimensions of the screen
+		int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+		int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+
+		windowX = (screenWidth - windowWidth) / 2;
+		windowY = (screenHeight - windowHeight) / 2;
+
+		// create window
+		windowHandler = ::CreateWindowExW(0, windowClass.lpszClassName, WINDOW_TITLE, WS_OVERLAPPEDWINDOW, windowX, windowY, windowWidth, windowHeight, NULL, NULL, windowClass.hInstance, this);
 
 		if (!windowHandler)
 		{
@@ -44,6 +55,7 @@ namespace blue
 			return;
 		}
 
+		// show window
 		::ShowWindow(windowHandler, SW_SHOWDEFAULT);
 		::UpdateWindow(windowHandler);
 	}
@@ -77,17 +89,14 @@ namespace blue
 
 		switch (msg)
 		{
-		//case WM_SIZE:
-		//	if (render != nullptr && render->g_pd3dDevice != NULL && wParam != SIZE_MINIMIZED && initialized)
-		//	{
-		//		render->WaitForLastSubmittedFrame();
-		//		render->CleanupRenderTarget();
-		//		HRESULT result = render->g_pSwapChain->ResizeBuffers(0, (UINT)LOWORD(lParam), (UINT)HIWORD(lParam), DXGI_FORMAT_UNKNOWN, DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT);
-		//		assert(SUCCEEDED(result) && "Failed to resize swapchain.");
-		//		render->CreateRenderTarget();
-		//	}
 
-		//	return 0;
+		case WM_SIZE:
+			if (render != nullptr && render->g_pd3dDevice != nullptr && wParam != SIZE_MINIMIZED && initialized)
+			{
+				//render->OnResize(lParam);
+			}
+
+			return 0;
 		
 		case WM_SYSCOMMAND:
 			if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu

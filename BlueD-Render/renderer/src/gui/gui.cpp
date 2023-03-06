@@ -31,14 +31,14 @@ namespace blue
 		float dpi = GetDpiForWindow(windowHandler);
 		float dpiScale = (dpi / 80.0f);
 		ImFontConfig fontCfg;
-		fontCfg.OversampleH = (int)(dpiScale + 4.0f);
-		fontCfg.OversampleV = (int)(dpiScale + 4.0f);
+		fontCfg.OversampleH = (int)(dpiScale + 2.0f);
+		fontCfg.OversampleV = (int)(dpiScale + 2.0f);
 		float fontSize = 14.0f * dpiScale;
 		ImFont* font = io.Fonts->AddFontFromFileTTF("C:\\Windows\\Fonts\\Verdana.ttf", fontSize, &fontCfg);
 
 		// Scale your Style structure accordingly
 		ImGuiStyle& style = ImGui::GetStyle();
-		style.ScaleAllSizes(dpiScale);
+		//style.ScaleAllSizes(dpiScale);
 
 		// When viewports are enabled we tweak WindowRounding/WindowBg so platform windows can look identical to regular ones.
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -158,7 +158,7 @@ namespace blue
 		ImGui::End();
 	}
 
-	static void ShowDebugOverlay(bool* p_open)
+	void ShowDebugOverlay(bool* p_open)
 	{
 		static int location = 0;
 		ImGuiIO& io = ImGui::GetIO();
@@ -194,7 +194,7 @@ namespace blue
 		ImGui::End();
 	}
 
-	static void ShowViewport(IDXGISwapChain3* g_pSwapChain)
+	void ShowViewport(IDXGISwapChain3* g_pSwapChain)
 	{
 		// TODO: a viewport camera that change with the below viewport.
 		ImGuiIO& io = ImGui::GetIO();
@@ -208,37 +208,47 @@ namespace blue
 		ImGui::End();
 	}
 
-	static void ShowContent()
+	void ShowContent()
 	{
 		// TODO: Create a content browser, where user can drag and drop assets.
 		ImGui::Begin("Content Browser");
 		ImGui::End();
 	}
 
-	static void ShowHierarchy()
+	void ShowHierarchy()
 	{
 		// TODO:Create a scene hierarchy, where user can drag and drop game objects.
 		ImGui::Begin("Scene Hierarchy");
 		ImGui::End();
 	}
 
+	void ShowDebug()
+	{
+		// TODO:
+		ImGui::Begin("Debug");
+		ImGui::End();
+	}
+
 	void Gui::AddGui()
 	{
-		SetDockspace();
+		//SetDockspace();
 		// 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
 		ImGui::ShowDemoWindow();
 		
 		// show fps
-		bool showDebugOverlay = true;
-		ShowDebugOverlay(&showDebugOverlay);
+		//bool showDebugOverlay = true;
+		//ShowDebugOverlay(&showDebugOverlay);
 
 		// 2. Create a window as viewport for render
-		ShowViewport(render->g_pSwapChain.Get());
+		//ShowViewport(render->g_pSwapChain.Get());
 
 		// 3. Create a window as content browser
 		ShowContent();
 
 		// 4. Create a window as scene hierarchy
 		ShowHierarchy();
+
+
+		ShowDebug();
 	}
 }

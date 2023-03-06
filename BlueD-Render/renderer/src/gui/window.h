@@ -19,7 +19,7 @@ namespace blue
 		uint32_t		windowHeight;
 		bool			quit;
 		bool			initialized;
-		bool			fullScreen = true;
+		bool			fullScreen = false;
 		// winapi window variables
 		HWND			windowHandler;
 		WNDCLASSEXW		windowClass;
@@ -31,7 +31,7 @@ namespace blue
 		void SetRender(std::shared_ptr<blue::Render> r);
 		void DestroyHWindow();
 
-		Window(uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+		Window();
 		~Window();
 
 	private:

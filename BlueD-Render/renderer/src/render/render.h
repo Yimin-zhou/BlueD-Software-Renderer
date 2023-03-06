@@ -36,12 +36,13 @@ namespace blue
 		};
 
 		// Pipeline objects.
-		static const int32_t                NUM_FRAMES_IN_FLIGHT = 3;
-		static const int32_t                NUM_BACK_BUFFERS = 3;
+		static const int32_t                NUM_FRAMES_IN_FLIGHT = 2;
+		static const int32_t                NUM_BACK_BUFFERS = 2;
 		CD3DX12_VIEWPORT 					g_viewport;
 		CD3DX12_RECT 						g_scissorRect;
 		ComPtr<IDXGISwapChain3>				g_pSwapChain;
 		ComPtr<ID3D12Device>				g_pd3dDevice;
+		ComPtr<IDXGIFactory4>				g_dxgiFactory4;
 		ComPtr<IDXGIAdapter1>				g_pAdapter;
 		ComPtr<ID3D12Resource>				g_mainRenderTargetResource[NUM_BACK_BUFFERS];
 		D3D12_CPU_DESCRIPTOR_HANDLE			g_mainRenderTargetDescriptor[NUM_BACK_BUFFERS];
@@ -68,24 +69,42 @@ namespace blue
 		ImVec4								clear_color;
 		HWND								windowHandler;
 
-		void CreateDevice();
-		void DestroyDevice();
+		void Init();
+		void Cleanup();
+
+		void LoadPipeline();
+		void LoadAsset();
 
 		FrameContext* WaitForNextFrameResources();
-
-		void CreateRenderTarget();
-		void CleanupRenderTarget();
-		void WaitForLastSubmittedFrame();
 
 		void ResetCommandAllocator();
 		void PopulateCommandList();
 		void RenderFrame();
+		void OnResize(LPARAM lParam);
 
 		Render(HWND windowHandler);
 		Render();
 		~Render();
 
 	private:
+		// Pipeline
+		void _CreateDevice();
+		void _CreateCommandQueue();
+		void _CreateSwapchain();
+		void _CreateRTV();
+		void _CreateImGuiSRV();
+		void _CreateCmdAllocator();
+
+		// Assets
+		void _CreateRootSig();
+		void _CreatePSO();
+		void _CreateCommandList();
+		void _CreateVertexBuffer();
+		void _CreateSynchronization();
+
+		void _ResetRT();
+		void _WaitForLastSubmittedFrame();
+		void _WaitGPU();
 
 	};
 }
